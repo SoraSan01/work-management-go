@@ -1,0 +1,196 @@
+{{ define "admin/dashboard/index.html" }}
+{{ template "admin-header" . }}
+
+<div class="space-y-6">
+  <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Admin Dashboard</h1>
+      <p class="text-sm text-gray-500">System-wide visibility for users, projects, operations, and approval queues.</p>
+    </div>
+    <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+      {{ .UnreadNotifications }} unread notification(s)
+    </span>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Users</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .TotalUsers }}</p>
+      <p class="mt-1 text-xs text-gray-500">{{ .ActiveUsers }} active account(s)</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Projects</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .TotalProjects }}</p>
+      <p class="mt-1 text-xs text-gray-500">{{ .ActiveProjects }} active, {{ .CompletedProjects }} completed</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Teams & Departments</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .TotalTeams }} / {{ .TotalDepartments }}</p>
+      <p class="mt-1 text-xs text-gray-500">Team and org structure coverage</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Pending Requests</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .PendingRequests }}</p>
+      <p class="mt-1 text-xs text-gray-500">Customer requests awaiting triage</p>
+    </div>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-3">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm font-semibold text-gray-900">Task Pipeline</h2>
+      <div class="mt-4 space-y-3 text-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">To Do</span>
+          <span class="font-semibold text-gray-900">{{ .TodoTasks }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">In Progress</span>
+          <span class="font-semibold text-gray-900">{{ .InProgressTasks }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">For Review</span>
+          <span class="font-semibold text-gray-900">{{ .ForReviewTasks }}</span>
+        </div>
+        <div class="flex items-center justify-between border-t border-gray-100 pt-2">
+          <span class="text-gray-700">Done</span>
+          <span class="font-semibold text-green-700">{{ .DoneTasks }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm font-semibold text-gray-900">Approval Queues</h2>
+      <div class="mt-4 space-y-3 text-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">Pending Initial Approvals</span>
+          <span class="font-semibold text-gray-900">{{ .PendingInitialApprovals }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">Pending Final QA</span>
+          <span class="font-semibold text-gray-900">{{ .PendingFinalQA }}</span>
+        </div>
+      </div>
+      <div class="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-500">
+        Track project review bottlenecks before they impact delivery.
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm font-semibold text-gray-900">System Totals</h2>
+      <div class="mt-4 space-y-3 text-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">Total Tasks</span>
+          <span class="font-semibold text-gray-900">{{ .TotalTasks }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">Total Teams</span>
+          <span class="font-semibold text-gray-900">{{ .TotalTeams }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">Total Departments</span>
+          <span class="font-semibold text-gray-900">{{ .TotalDepartments }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-900">Recent Projects</h2>
+        <a href="/admin/projects" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Manage</a>
+      </div>
+      {{ if .RecentProjects }}
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="py-2 pr-4">Project</th>
+              <th class="py-2 pr-4">Team</th>
+              <th class="py-2">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{ range .RecentProjects }}
+            <tr>
+              <td class="py-2 pr-4 font-medium text-gray-900">{{ .Name }}</td>
+              <td class="py-2 pr-4 text-gray-700">{{ if .Team.Name }}{{ .Team.Name }}{{ else }}-{{ end }}</td>
+              <td class="py-2 text-gray-500">{{ .Status }}</td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+      {{ else }}
+      <p class="text-sm text-gray-500">No projects available.</p>
+      {{ end }}
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-900">Latest Pending Requests</h2>
+        <a href="/admin/projects/requests" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Open</a>
+      </div>
+      {{ if .RecentRequests }}
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="py-2 pr-4">Title</th>
+              <th class="py-2 pr-4">Customer</th>
+              <th class="py-2">Deadline</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{ range .RecentRequests }}
+            <tr>
+              <td class="py-2 pr-4 font-medium text-gray-900">{{ .Title }}</td>
+              <td class="py-2 pr-4 text-gray-700">{{ if .Customer.User.ID }}{{ .Customer.User.FirstName }} {{ .Customer.User.LastName }}{{ else }}-{{ end }}</td>
+              <td class="py-2 text-gray-500">{{ if .Deadline.IsZero }}-{{ else }}{{ .Deadline.Format "Jan 02, 2006" }}{{ end }}</td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+      {{ else }}
+      <p class="text-sm text-gray-500">No pending requests at this time.</p>
+      {{ end }}
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-gray-900">Recent Activity Logs</h2>
+      <a href="/admin/activities" class="text-xs font-semibold text-blue-600 hover:text-blue-700">View all</a>
+    </div>
+    {{ if .RecentLogs }}
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="text-left text-xs uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="py-2 pr-4">Time</th>
+            <th class="py-2 pr-4">User</th>
+            <th class="py-2 pr-4">Action</th>
+            <th class="py-2">Entity</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {{ range .RecentLogs }}
+          <tr>
+            <td class="py-2 pr-4 text-gray-500">{{ .CreatedAt.Format "Jan 02, 2006 03:04 PM" }}</td>
+            <td class="py-2 pr-4 text-gray-700">{{ if .User.ID }}{{ .User.Name }}{{ else }}Unknown User{{ end }}</td>
+            <td class="py-2 pr-4 text-gray-900">{{ .Action }}</td>
+            <td class="py-2 text-gray-700">{{ .Entity }}</td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+    {{ else }}
+    <p class="text-sm text-gray-500">No activity logs available.</p>
+    {{ end }}
+  </div>
+</div>
+
+{{ template "admin-footer" . }}
+{{ end }}

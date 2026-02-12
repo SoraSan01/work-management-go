@@ -1,0 +1,204 @@
+{{ define "admin/reports/employee.html" }}
+{{ template "admin-header" . }}
+
+<div class="space-y-6">
+  <div class="flex flex-col gap-2">
+    <h1 class="text-2xl font-semibold text-gray-900">Employee Reports</h1>
+    <p class="text-sm text-gray-500">Overview of employee counts, role distribution, and recent additions.</p>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Total Employees</p>
+      <p class="mt-2 text-3xl font-semibold text-gray-900">{{ .Report.TotalEmployees }}</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Active Employees</p>
+      <p class="mt-2 text-3xl font-semibold text-emerald-600">{{ .Report.ActiveEmployees }}</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Inactive Employees</p>
+      <p class="mt-2 text-3xl font-semibold text-amber-600">{{ .Report.InactiveEmployees }}</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div class="mb-3">
+        <h2 class="text-sm font-semibold text-gray-900">Employee Status</h2>
+      </div>
+      <div class="h-72">
+        <canvas id="employeeStatusChart"></canvas>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div class="mb-3">
+        <h2 class="text-sm font-semibold text-gray-900">Employees by Role</h2>
+      </div>
+      <div class="h-72">
+        <canvas id="employeeRoleChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="border-b border-gray-100 px-4 py-3">
+        <h2 class="text-sm font-semibold text-gray-900">By Role</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="px-4 py-3">Role</th>
+              <th class="px-4 py-3 text-right">Count</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{ range .Report.RoleStats }}
+            <tr>
+              <td class="px-4 py-3 text-gray-800">{{ .RoleName }}</td>
+              <td class="px-4 py-3 text-right font-medium text-gray-900">{{ .Count }}</td>
+            </tr>
+            {{ else }}
+            <tr>
+              <td colspan="2" class="px-4 py-8 text-center text-sm text-gray-500">No role data.</td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="border-b border-gray-100 px-4 py-3">
+        <h2 class="text-sm font-semibold text-gray-900">By Department</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="px-4 py-3">Department</th>
+              <th class="px-4 py-3 text-right">Count</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{ range .Report.DepartmentStats }}
+            <tr>
+              <td class="px-4 py-3 text-gray-800">{{ .DepartmentName }}</td>
+              <td class="px-4 py-3 text-right font-medium text-gray-900">{{ .Count }}</td>
+            </tr>
+            {{ else }}
+            <tr>
+              <td colspan="2" class="px-4 py-8 text-center text-sm text-gray-500">No department data.</td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-100 px-4 py-3">
+      <h2 class="text-sm font-semibold text-gray-900">Recently Added Employees</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-3">Name</th>
+            <th class="px-4 py-3">Email</th>
+            <th class="px-4 py-3">Role</th>
+            <th class="px-4 py-3">Department</th>
+            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3">Created</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {{ range .Report.RecentEmployees }}
+          <tr>
+            <td class="px-4 py-3 font-medium text-gray-900">{{ .FirstName }} {{ .LastName }}</td>
+            <td class="px-4 py-3 text-gray-700">{{ .Email }}</td>
+            <td class="px-4 py-3 text-gray-700">{{ if .Role.Name }}{{ .Role.Name }}{{ else }}-{{ end }}</td>
+            <td class="px-4 py-3 text-gray-700">{{ if .Department }}{{ .Department.Name }}{{ else }}Unassigned{{ end }}</td>
+            <td class="px-4 py-3">
+              {{ if .IsActive }}
+              <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">Active</span>
+              {{ else }}
+              <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">Inactive</span>
+              {{ end }}
+            </td>
+            <td class="px-4 py-3 text-gray-500">{{ .CreatedAt.Format "Jan 02, 2006" }}</td>
+          </tr>
+          {{ else }}
+          <tr>
+            <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">No employees found.</td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  (() => {
+    const statusCtx = document.getElementById("employeeStatusChart");
+    const roleCtx = document.getElementById("employeeRoleChart");
+
+    if (!statusCtx || !roleCtx || typeof Chart === "undefined") return;
+
+    const roleLabels = [
+      {{- range $i, $item := .Report.RoleStats -}}
+      {{- if $i }},{{ end }}{{ printf "%q" $item.RoleName }}
+      {{- end -}}
+    ];
+    const roleCounts = [
+      {{- range $i, $item := .Report.RoleStats -}}
+      {{- if $i }},{{ end }}{{ $item.Count }}
+      {{- end -}}
+    ];
+
+    new Chart(statusCtx, {
+      type: "doughnut",
+      data: {
+        labels: ["Active", "Inactive"],
+        datasets: [{
+          data: [{{ .Report.ActiveEmployees }}, {{ .Report.InactiveEmployees }}],
+          backgroundColor: ["#10b981", "#f59e0b"],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom" } }
+      }
+    });
+
+    new Chart(roleCtx, {
+      type: "bar",
+      data: {
+        labels: roleLabels,
+        datasets: [{
+          label: "Employees",
+          data: roleCounts,
+          backgroundColor: "#3b82f6",
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+  })();
+</script>
+
+{{ template "admin-footer" . }}
+{{ end }}

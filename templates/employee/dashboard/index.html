@@ -1,0 +1,95 @@
+{{ define "employee/dashboard/index.html" }}
+{{ template "employee-header" . }}
+
+<div class="space-y-6">
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Employee Dashboard</h1>
+      <p class="text-sm text-gray-500">Track your workload and recent task activity.</p>
+    </div>
+    <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+      {{ .CompletionRate }}% completion rate
+    </span>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Tasks</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .TotalTasks }}</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">To Do</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .TodoTasks }}</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">In Progress</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .InProgressTasks }}</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">For Review</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .ForReviewTasks }}</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Done</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .DoneTasks }}</p>
+    </div>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-3">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm font-semibold text-gray-900">Overview</h2>
+      <div class="mt-4 space-y-3 text-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">Team</span>
+          <span class="font-semibold text-gray-900">{{ .TeamName }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">Completed This Week</span>
+          <span class="font-semibold text-gray-900">{{ .CompletedThisWeek }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">Open Tasks</span>
+          <span class="font-semibold text-gray-900">{{ .OpenTasks }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm lg:col-span-2">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-900">Recent Tasks</h2>
+        <a href="/employee/tasks/board" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Open Board</a>
+      </div>
+      {{ if .RecentTasks }}
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="py-2 pr-4">Task</th>
+              <th class="py-2 pr-4">Project</th>
+              <th class="py-2 pr-4">Status</th>
+              <th class="py-2">Updated</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{ range .RecentTasks }}
+            <tr>
+              <td class="py-2 pr-4 font-medium text-gray-900">{{ .Title }}</td>
+              <td class="py-2 pr-4 text-gray-700">{{ if .Project }}{{ .Project.Name }}{{ else }}-{{ end }}</td>
+              <td class="py-2 pr-4 text-gray-700">{{ .Status }}</td>
+              <td class="py-2 text-gray-500">{{ .UpdatedAt.Format "Jan 02, 2006 03:04 PM" }}</td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+      {{ else }}
+      <div class="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+        <p class="text-sm text-gray-500">No tasks assigned yet.</p>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</div>
+
+{{ template "employee-footer" . }}
+{{ end }}

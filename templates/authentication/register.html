@@ -1,0 +1,82 @@
+{{ define "authentication/register.html" }}
+{{ template "login-header" . }}
+
+<div class="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-10">
+  <div class="w-full max-w-5xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div class="grid lg:grid-cols-2">
+      <div class="hidden lg:flex relative flex-col justify-between px-10 py-10 text-white bg-[url('/static/img/work.jpg')] bg-cover bg-center">
+        <div class="absolute inset-0 bg-slate-900/75"></div>
+
+        <div class="relative z-10">
+          <div class="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur">
+            WorkMS
+          </div>
+          <h1 class="mt-6 text-3xl font-semibold leading-tight">Create your customer account in minutes.</h1>
+          <p class="mt-3 max-w-sm text-sm text-white/80">Sign up to submit project requests, track progress, and collaborate with your delivery team.</p>
+        </div>
+
+        <div class="relative z-10 text-xs text-white/70">Copyright 2026 WorkMS</div>
+      </div>
+
+      <div class="px-6 py-8 sm:px-10 lg:px-12">
+        <div class="mx-auto w-full max-w-md">
+          <h2 class="text-2xl font-semibold text-gray-900">Create account</h2>
+          <p class="mt-1 text-sm text-gray-500">Register as a customer.</p>
+
+          {{ if .error }}
+          <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{{ .error }}</div>
+          {{ end }}
+
+          <form action="/signup" method="POST" class="mt-6 space-y-4">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label for="first_name" class="mb-1.5 block text-sm font-medium text-gray-700">First name</label>
+                <input type="text" id="first_name" name="first_name" required value="{{ with .form }}{{ .first_name }}{{ end }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Jane">
+              </div>
+              <div>
+                <label for="last_name" class="mb-1.5 block text-sm font-medium text-gray-700">Last name</label>
+                <input type="text" id="last_name" name="last_name" required value="{{ with .form }}{{ .last_name }}{{ end }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Doe">
+              </div>
+            </div>
+
+            <div>
+              <label for="email" class="mb-1.5 block text-sm font-medium text-gray-700">Email</label>
+              <input type="email" id="email" name="email" required autocomplete="email" value="{{ with .form }}{{ .email }}{{ end }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="you@example.com">
+            </div>
+
+            <div>
+              <label for="company_name" class="mb-1.5 block text-sm font-medium text-gray-700">Company name</label>
+              <input type="text" id="company_name" name="company_name" required value="{{ with .form }}{{ .company_name }}{{ end }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Acme Corporation">
+            </div>
+
+            <div>
+              <label for="contact_number" class="mb-1.5 block text-sm font-medium text-gray-700">Contact number</label>
+              <input type="text" id="contact_number" name="contact_number" value="{{ with .form }}{{ .contact_number }}{{ end }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Optional">
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label for="password" class="mb-1.5 block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" id="password" name="password" required minlength="8" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Minimum 8 characters">
+              </div>
+              <div>
+                <label for="confirm_password" class="mb-1.5 block text-sm font-medium text-gray-700">Confirm password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="8" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Re-enter password">
+              </div>
+            </div>
+
+            <button type="submit" class="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Create customer account</button>
+          </form>
+
+          <p class="mt-6 text-center text-sm text-gray-600">
+            Already have an account?
+            <a href="/login" class="font-medium text-blue-600 hover:text-blue-700 hover:underline">Sign in</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ template "login-footer" . }}
+{{ end }}

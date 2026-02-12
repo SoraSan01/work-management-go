@@ -1,0 +1,101 @@
+{{ define "admin-header" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Work Management System - Admin Panel">
+  <title>{{ if .PageTitle }}{{ .PageTitle }} | {{ end }}Admin Panel</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Tailwind Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              300: '#93c5fd',
+              400: '#60a5fa',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          },
+          spacing: {
+            'sidebar': '16rem'
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Custom Styles -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    * {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    /* Custom scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+
+    /* Sidebar layout */
+    @media (min-width: 1024px) {
+      #mainContent {
+        margin-left: 16rem;
+        transition: margin-left 300ms ease;
+      }
+      
+      body.sidebar-collapsed #mainContent {
+        margin-left: 0;
+      }
+      
+      body.sidebar-collapsed #sidebar {
+        transform: translateX(-100%);
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased">
+  <div class="flex min-h-screen">
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay fixed inset-0 bg-black/50 z-30 hidden" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    {{ template "admin-sidebar" . }}
+    
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col" id="mainContent">
+      <!-- Navbar -->
+      {{ template "admin-navbar" . }}
+      
+      <main class="flex-1 p-4 md:p-6 lg:p-8">
+{{ end }}

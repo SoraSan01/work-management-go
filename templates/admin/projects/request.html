@@ -1,0 +1,240 @@
+{{ define "admin/projects/requests.html" }}
+{{ template "admin-header" . }}
+
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">{{ .title }}</h1>
+      <p class="text-sm text-gray-500">Review and manage incoming project requests.</p>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900">All Requests</h2>
+        <p class="text-xs text-gray-500">Search, sort, and review requests.</p>
+      </div>
+      <div class="w-full sm:w-64">
+        <label class="sr-only" for="requestsSearch">Search requests</label>
+        <div class="relative">
+          <input id="requestsSearch"
+                 type="text"
+                 placeholder="Search requests..."
+                 class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pl-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+          <i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
+        </div>
+      </div>
+    </div>
+
+    {{ if .requests }}
+    <div class="overflow-x-auto">
+      <table id="requestsTable" class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="title">
+                <span>Project</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="customer">
+                <span>Customer</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="company">
+                <span>Company</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="deadline">
+                <span>Deadline</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="status">
+                <span>Status</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {{ range .requests }}
+          <tr
+            data-title="{{ .Title }}"
+            data-customer="{{ .Customer.User.FirstName }} {{ .Customer.User.LastName }}"
+            data-company="{{ .Customer.CompanyName }}"
+            data-deadline="{{ .Deadline.Format "2006-01-02" }}"
+            data-status="{{ .Status }}"
+          >
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                  <i class="fas fa-file-alt"></i>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-900">{{ .Title }}</p>
+                  <p class="text-xs text-gray-500">{{ if .Description }}{{ .Description }}{{ else }}No description{{ end }}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <p class="font-medium text-gray-900">{{ .Customer.User.FirstName }} {{ .Customer.User.LastName }}</p>
+            </td>
+            <td class="px-4 py-3">
+              {{ .Customer.CompanyName }}
+            </td>
+            <td class="px-4 py-3">
+              {{ .Deadline.Format "Jan 02, 2006" }}
+            </td>
+            <td class="px-4 py-3">
+              {{ if eq .Status "pending" }}
+                <span class="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700">Pending</span>
+              {{ else if eq .Status "approved" }}
+                <span class="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Approved</span>
+              {{ else if eq .Status "rejected" }}
+                <span class="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700">Rejected</span>
+              {{ else }}
+                <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">{{ .Status }}</span>
+              {{ end }}
+            </td>
+            <td class="px-4 py-3 text-right">
+              <div class="inline-flex items-center gap-2">
+                <button type="button"
+                        class="inline-flex items-center gap-2 rounded-lg border border-green-200 px-3 py-2 text-xs font-medium text-green-700 transition hover:bg-green-50"
+                        data-approve-request
+                        data-approve-id="{{ .ID }}">
+                  <i class="fas fa-check"></i>
+                  <span>Approve</span>
+                </button>
+                <button type="button"
+                        class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                        data-reject-request
+                        data-reject-id="{{ .ID }}">
+                  <i class="fas fa-times"></i>
+                  <span>Reject</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-xs text-gray-500" id="requestsTableInfo"></div>
+      <div class="flex items-center gap-2" id="requestsTablePagination"></div>
+    </div>
+    {{ else }}
+    <div class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <div class="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+        <i class="fas fa-file-alt text-2xl"></i>
+      </div>
+      <h3 class="text-sm font-semibold text-gray-900">No pending requests</h3>
+      <p class="text-sm text-gray-500">There are no project requests at the moment.</p>
+    </div>
+    {{ end }}
+  </div>
+</div>
+
+<!-- Approve Modal -->
+<div id="approveModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-gray-900/50" id="approveModalOverlay"></div>
+  <div class="relative mx-auto flex min-h-full max-w-lg items-center px-4 py-8">
+    <div class="w-full rounded-2xl bg-white shadow-xl">
+      <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">Approve Request</h2>
+          <p class="text-sm text-gray-500">Choose a team to manage this project.</p>
+        </div>
+        <button type="button"
+                id="closeApproveModal"
+                class="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form id="approveForm" method="POST" class="space-y-5 px-6 py-5">
+        <div>
+          <label class="text-sm font-medium text-gray-700">Team</label>
+          <select name="team_id" required
+            class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">Select Team</option>
+            {{ range .teams }}
+            <option value="{{ .ID }}">{{ .Name }}</option>
+            {{ end }}
+          </select>
+        </div>
+
+        <div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+          <button type="button"
+            id="cancelApproveModal"
+            class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit"
+            class="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700">
+            Confirm Approve
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Rejection Modal -->
+<div id="rejectModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-gray-900/50" id="rejectModalOverlay"></div>
+  <div class="relative mx-auto flex min-h-full max-w-lg items-center px-4 py-8">
+    <div class="w-full rounded-2xl bg-white shadow-xl">
+      <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">Reject Request</h2>
+          <p class="text-sm text-gray-500">Provide a reason for rejection.</p>
+        </div>
+        <button type="button"
+                id="closeRejectModal"
+                class="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form id="rejectForm" method="POST" class="space-y-5 px-6 py-5">
+        <div>
+          <label class="text-sm font-medium text-gray-700">Reason</label>
+          <textarea name="reason" rows="4" required
+            class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            placeholder="Explain why this request is rejected..."></textarea>
+        </div>
+        <div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+          <button type="button"
+            id="cancelRejectModal"
+            class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit"
+            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700">
+            Confirm Reject
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/admin/project-requests.js"></script>
+
+{{ template "admin-footer" . }}
+{{ end }}

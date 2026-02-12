@@ -1,0 +1,54 @@
+{{ define "employee/teams/chart.html" }}
+{{ template "employee-header" . }}
+
+<div class="space-y-6">
+
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-200 relative">
+
+    <!-- Toolbar -->
+    <div id="chartToolbar"
+         class="sticky top-0 z-10 flex items-center gap-2
+                bg-white/90 backdrop-blur
+                border-b border-gray-200
+                p-3 rounded-t-2xl">
+
+      <button id="zoomIn" class="tool-btn">＋</button>
+      <button id="zoomOut" class="tool-btn">－</button>
+      <button id="reset" class="tool-btn">Reset</button>
+      <button id="fit" class="tool-btn">Fit</button>
+      <button id="export" class="tool-btn">Export PNG</button>
+      <button id="fullscreen" class="tool-btn ml-auto">Fullscreen</button>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-container grid-bg h-[500px] md:h-[500px] rounded-b-2xl overflow-auto"></div>
+
+  </div>
+</div>
+
+<style>
+.grid-bg {
+  background-color: #f9fafb2a;
+  background-image:
+    linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* toolbar buttons */
+.tool-btn {
+  @apply px-3 py-1.5 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 active:scale-95 transition;
+}
+</style>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-org-chart@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-flextree@2.1.2/build/d3-flextree.js"></script>
+
+<script src="/static/js/employee/chart.js" ></script>
+
+<script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
+
+{{ template "employee-footer" . }}
+{{ end }}

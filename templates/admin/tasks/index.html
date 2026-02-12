@@ -1,0 +1,272 @@
+{{ define "admin/tasks/index.html" }}
+{{ template "admin-header" . }}
+
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Tasks</h1>
+      <p class="text-sm text-gray-500">Track and manage project tasks.</p>
+    </div>
+    <button type="button"
+      id="openAddTaskModal"
+      class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+      <i class="fas fa-plus-circle"></i>
+      <span>Add Task</span>
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900">All Tasks</h2>
+        <p class="text-xs text-gray-500">Search, sort, and manage tasks.</p>
+      </div>
+      <div class="w-full sm:w-64">
+        <label class="sr-only" for="tasksSearch">Search tasks</label>
+        <div class="relative">
+          <input id="tasksSearch"
+                 type="text"
+                 placeholder="Search tasks..."
+                 class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pl-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+          <i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
+        </div>
+      </div>
+    </div>
+
+    {{ if .Tasks }}
+    <div class="overflow-x-auto">
+      <table id="tasksTable" class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="title">
+                <span>Title</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="project">
+                <span>Project</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="assignee">
+                <span>Assignee</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="status">
+                <span>Status</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="due">
+                <span>Due</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {{ range .Tasks }}
+          <tr
+            data-title="{{ .Title }}"
+            data-project="{{ if .Project }}{{ .Project.Name }}{{ end }}"
+            data-assignee="{{ if .Assignee }}{{ .Assignee.Name }}{{ end }}"
+            data-status="{{ .Status }}"
+            data-due="{{ .DueDate.Format "2006-01-02" }}"
+            data-priority="{{ .Priority }}"
+            data-description="{{ .Description }}"
+            data-task-id="{{ .ID }}"
+            data-project-id="{{ .ProjectID }}"
+            data-assignee-id="{{ .AssignedTo }}"
+          >
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-900">{{ .Title }}</p>
+                  <p class="text-xs text-gray-500">{{ if .Description }}{{ .Description }}{{ else }}No description{{ end }}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              {{ if .Project }}{{ .Project.Name }}{{ else }}-{{ end }}
+            </td>
+            <td class="px-4 py-3">
+              {{ if .Assignee }}{{ .Assignee.Name }}{{ else }}-{{ end }}
+            </td>
+            <td class="px-4 py-3">
+              {{ if eq .Status "todo" }}
+                <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">To Do</span>
+              {{ else if eq .Status "in_progress" }}
+                <span class="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700">In Progress</span>
+              {{ else if eq .Status "for_review" }}
+                <span class="inline-flex items-center rounded-full bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700">For Review</span>
+              {{ else if eq .Status "done" }}
+                <span class="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Done</span>
+              {{ else }}
+                <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{{ .Status }}</span>
+              {{ end }}
+            </td>
+            <td class="px-4 py-3 text-gray-500">
+              {{ .DueDate.Format "Jan 02, 2006" }}
+            </td>
+            <td class="px-4 py-3 text-right">
+              <div class="inline-flex items-center gap-2">
+                <button type="button"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+                        data-edit-task>
+                  <i class="fas fa-pen"></i>
+                  <span>Edit</span>
+                </button>
+                <form action="/admin/tasks/delete/{{ .ID }}" method="POST" class="inline" onsubmit="return confirm('Delete this task?')">
+                  <button type="submit" class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete</span>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-xs text-gray-500" id="tasksTableInfo"></div>
+      <div class="flex items-center gap-2" id="tasksTablePagination"></div>
+    </div>
+    {{ else }}
+    <div class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <div class="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+        <i class="fas fa-check-circle text-2xl"></i>
+      </div>
+      <h3 class="text-sm font-semibold text-gray-900">No tasks yet</h3>
+      <p class="text-sm text-gray-500">Create your first task to get started.</p>
+      <button type="button"
+        id="openAddTaskModalEmpty"
+        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+        <i class="fas fa-plus-circle"></i>
+        <span>Add Task</span>
+      </button>
+    </div>
+    {{ end }}
+  </div>
+</div>
+
+<!-- Task Modal -->
+<div id="taskModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-gray-900/50" id="taskModalOverlay"></div>
+  <div class="relative mx-auto flex min-h-full max-w-2xl items-center px-4 py-8">
+    <div class="w-full rounded-2xl bg-white shadow-xl">
+      <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900" id="taskModalTitle">Add Task</h2>
+          <p class="text-sm text-gray-500" id="taskModalSubtitle">Create a new task for a project.</p>
+        </div>
+        <button type="button"
+          id="closeTaskModal"
+          class="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+          aria-label="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form method="POST" action="/admin/tasks/store" class="space-y-5 px-6 py-5" id="taskModalForm">
+        <div>
+          <label class="text-sm font-medium text-gray-700">Title</label>
+          <input type="text" name="title" id="taskTitle" required
+            class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-gray-700">Description</label>
+          <textarea name="description" id="taskDescription" rows="3"
+            class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"></textarea>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="text-sm font-medium text-gray-700">Project</label>
+            <select name="project_id" id="taskProjectId" required
+              class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+              <option value="">Select Project</option>
+              {{ range .Projects }}
+              <option value="{{ .ID }}"
+                      data-member-ids="{{ if .Team }}{{ range $index, $member := .Team.Members }}{{ if $index }},{{ end }}{{ $member.ID }}{{ end }}{{ end }}">
+                {{ .Name }}
+              </option>
+              {{ end }}
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700">Assignee</label>
+            <select name="assigned_to" id="taskAssigneeId" required
+              class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+              <option value="">Select Assignee</option>
+              {{ range .Users }}
+              <option value="{{ .ID }}">{{ .FirstName }} {{ .LastName }}</option>
+              {{ end }}
+            </select>
+            <p class="mt-2 text-xs text-gray-500" id="taskAssigneeHelp">Select a project to filter assignees by team.</p>
+          </div>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label class="text-sm font-medium text-gray-700">Status</label>
+            <select name="status" id="taskStatus"
+              class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+              <option value="todo">To Do</option>
+              <option value="in_progress">In Progress</option>
+              <option value="for_review">For Review</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700">Priority</label>
+            <select name="priority" id="taskPriority"
+              class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700">Due Date</label>
+            <input type="date" name="due_date" id="taskDueDate" required
+              class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+          </div>
+        </div>
+
+        <div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+          <button type="button"
+            id="cancelTaskModal"
+            class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit"
+            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+            id="taskModalSubmit">
+            Create Task
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/admin/tasks.js"></script>
+
+{{ template "admin-footer" . }}
+{{ end }}

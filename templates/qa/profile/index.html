@@ -1,0 +1,57 @@
+{{ define "qa/profile/index.html" }}
+{{ template "qa-header" . }}
+
+<div class="mx-auto max-w-4xl space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-gray-900">My Profile</h1>
+    <p class="text-sm text-gray-500">Quality assurance account summary and review stats.</p>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm lg:col-span-1">
+      <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-2xl font-semibold text-blue-700">
+        {{ if .UserInitials }}{{ .UserInitials }}{{ else }}QA{{ end }}
+      </div>
+      <div class="mt-4 text-center">
+        <h2 class="text-lg font-semibold text-gray-900">{{ .User.FirstName }} {{ .User.LastName }}</h2>
+        <p class="text-sm text-gray-500">{{ .User.Email }}</p>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm lg:col-span-2">
+      <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Account Details</h3>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <p class="text-xs uppercase tracking-wide text-gray-400">First Name</p>
+          <p class="mt-1 text-sm font-medium text-gray-900">{{ .User.FirstName }}</p>
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-wide text-gray-400">Last Name</p>
+          <p class="mt-1 text-sm font-medium text-gray-900">{{ .User.LastName }}</p>
+        </div>
+        <div class="sm:col-span-2">
+          <p class="text-xs uppercase tracking-wide text-gray-400">Email</p>
+          <p class="mt-1 text-sm font-medium text-gray-900">{{ .User.Email }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Assigned Projects</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .AssignedProjects }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Approved Projects</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .ApprovedProjects }}</p>
+    </div>
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Sent to Customer</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .SentProjects }}</p>
+    </div>
+  </div>
+</div>
+
+{{ template "qa-footer" . }}
+{{ end }}

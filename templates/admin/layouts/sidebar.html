@@ -1,0 +1,205 @@
+{{ define "admin-sidebar" }}
+<aside id="sidebar" class="fixed top-0 left-0 h-screen w-sidebar bg-white border-r border-gray-200 z-40 -translate-x-full lg:translate-x-0 transition-transform duration-300 overflow-y-auto custom-scrollbar">
+  <!-- Logo -->
+  <div class="p-6 border-b border-gray-100">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+        <i class="fas fa-tasks text-white"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-base font-semibold text-gray-900 truncate">Work Management</h1>
+        <p class="text-xs text-gray-500">Admin Panel</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="p-3 space-y-1">
+    <!-- Dashboard -->
+    <a href="/admin/dashboard" 
+       class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ if eq .ActivePage "dashboard" }}bg-blue-50 text-blue-600{{ else }}text-gray-700 hover:bg-gray-50{{ end }}">
+      <i class="fas fa-tachometer-alt w-5 text-center"></i>
+      <span>Dashboard</span>
+    </a>
+
+    <a href="/admin/profile" 
+       class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ if eq .ActivePage "profile" }}bg-blue-50 text-blue-600{{ else }}text-gray-700 hover:bg-gray-50{{ end }}">
+      <i class="fas fa-user-circle w-5 text-center"></i>
+      <span>My Profile</span>
+    </a>
+
+    <!-- Employees -->
+    <a href="/admin/employees" 
+       class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ if eq .ActivePage "employees" }}bg-blue-50 text-blue-600{{ else }}text-gray-700 hover:bg-gray-50{{ end }}">
+      <i class="fas fa-users w-5 text-center"></i>
+      <span>Employees</span>
+    </a>
+
+    <!-- Projects -->
+    <div class="nav-group">
+      <button type="button" 
+              class="nav-toggle w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              data-target="projects-menu"
+              aria-controls="projects-menu"
+              aria-expanded="false">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-folder w-5 text-center"></i>
+          <span>Projects</span>
+        </div>
+        <i class="fas fa-chevron-down text-xs transition-transform duration-200"></i>
+      </button>
+      <div id="projects-menu" class="nav-submenu ml-8 mt-1 space-y-1 hidden">
+        <a href="/admin/projects" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "projects" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          All Projects
+        </a>
+        <a href="/admin/projects/requests" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "project-requests" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          Project Requests
+        </a>
+      </div>
+    </div>
+
+    <!-- Tasks -->
+    <div class="nav-group">
+      <button type="button" 
+              class="nav-toggle w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              data-target="tasks-menu"
+              aria-controls="tasks-menu"
+              aria-expanded="false">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-check-circle w-5 text-center"></i>
+          <span>Tasks</span>
+        </div>
+        <i class="fas fa-chevron-down text-xs transition-transform duration-200"></i>
+      </button>
+      <div id="tasks-menu" class="nav-submenu ml-8 mt-1 space-y-1 hidden">
+        <a href="/admin/tasks" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "tasks" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          All Tasks
+        </a>
+        <a href="/admin/tasks/board" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "task-board" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          Task Board
+        </a>
+      </div>
+    </div>
+
+    <!-- Events -->
+    <a href="/admin/events" 
+       class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ if eq .ActivePage "events" }}bg-blue-50 text-blue-600{{ else }}text-gray-700 hover:bg-gray-50{{ end }}">
+      <i class="fas fa-calendar-alt w-5 text-center"></i>
+      <span>Events</span>
+    </a>
+
+    <!-- Teams -->
+    <div class="nav-group">
+      <button type="button" 
+              class="nav-toggle w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              data-target="teams-menu"
+              aria-controls="teams-menu"
+              aria-expanded="false">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-users-cog w-5 text-center"></i>
+          <span>Teams</span>
+        </div>
+        <i class="fas fa-chevron-down text-xs transition-transform duration-200"></i>
+      </button>
+      <div id="teams-menu" class="nav-submenu ml-8 mt-1 space-y-1 hidden">
+        <a href="/admin/teams" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "teams" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          All Teams
+        </a>
+        <a href="/admin/teams/chart" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "team-chart" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          Organizational Chart
+        </a>
+      </div>
+    </div>
+
+    <!-- Departments -->
+    <a href="/admin/departments" 
+       class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ if eq .ActivePage "departments" }}bg-blue-50 text-blue-600{{ else }}text-gray-700 hover:bg-gray-50{{ end }}">
+      <i class="fas fa-tachometer-alt w-5 text-center"></i>
+      <span>Departments</span>
+    </a>
+
+    <!-- Reports -->
+    <div class="nav-group">
+      <button type="button" 
+              class="nav-toggle w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              data-target="reports-menu"
+              aria-controls="reports-menu"
+              aria-expanded="false">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-chart-bar w-5 text-center"></i>
+          <span>Reports</span>
+        </div>
+        <i class="fas fa-chevron-down text-xs transition-transform duration-200"></i>
+      </button>
+      <div id="reports-menu" class="nav-submenu ml-8 mt-1 space-y-1 hidden">
+        <a href="/admin/reports/employee" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "employee-reports" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          Employee Reports
+        </a>
+        <a href="/admin/reports/projects" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "project-reports" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          Project Reports
+        </a>
+        <a href="/admin/reports/task" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "task-reports" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          Task Reports
+        </a>
+      </div>
+    </div>
+
+    <a href="/admin/activities"
+       class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ if eq .ActivePage "activities" }}bg-blue-50 text-blue-600{{ else }}text-gray-700 hover:bg-gray-50{{ end }}">
+      <i class="fas fa-history w-5 text-center"></i>
+      <span>Activity Logs</span>
+    </a>
+
+    <a href="/admin/notifications"
+       class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ if eq .ActivePage "notifications" }}bg-blue-50 text-blue-600{{ else }}text-gray-700 hover:bg-gray-50{{ end }}">
+      <i class="fas fa-bell w-5 text-center"></i>
+      <span>Notifications</span>
+    </a>
+
+    <!-- Admin -->
+    <div class="nav-group">
+      <button type="button" 
+              class="nav-toggle w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              data-target="admin-menu"
+              aria-controls="admin-menu"
+              aria-expanded="false">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-shield-alt w-5 text-center"></i>
+          <span>Admin</span>
+        </div>
+        <i class="fas fa-chevron-down text-xs transition-transform duration-200"></i>
+      </button>
+      <div id="admin-menu" class="nav-submenu ml-8 mt-1 space-y-1 hidden">
+        <a href="/admin/roles" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "roles" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          Roles
+        </a>
+        <a href="/admin/permissions" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors {{ if eq .ActivePage "permissions" }}bg-blue-50 text-blue-600{{ else }}text-gray-600 hover:bg-gray-50 hover:text-gray-900{{ end }}">
+          Permissions
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Version Info -->
+  <div class="mt-auto p-4 border-t border-gray-100">
+    <p class="text-center text-xs text-gray-500">
+      <i class="fas fa-info-circle mr-1"></i>
+      Version {{ if .AppVersion }}{{ .AppVersion }}{{ else }}1.0.0{{ end }}
+    </p>
+  </div>
+</aside>
+
+
+  <script src="/static/js/admin/sidebar.js"></script>
+{{ end }}

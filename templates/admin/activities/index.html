@@ -1,0 +1,47 @@
+{{ define "admin/activities/index.html" }}
+{{ template "admin-header" . }}
+
+<div class="space-y-6">
+  <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <h1 class="text-2xl font-semibold text-gray-900">Activity Logs</h1>
+    <p class="text-sm text-gray-500">Recent user actions across the system.</p>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="overflow-x-auto">
+      <table id="activityLogsTable" class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-3">Time</th>
+            <th class="px-4 py-3">User</th>
+            <th class="px-4 py-3">Action</th>
+            <th class="px-4 py-3">Entity</th>
+            <th class="px-4 py-3">Entity ID</th>
+            <th class="px-4 py-3">Details</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {{ range .Logs }}
+          <tr>
+            <td class="px-4 py-3 text-gray-700">{{ .CreatedAt.Format "Jan 02, 2006 03:04 PM" }}</td>
+            <td class="px-4 py-3 text-gray-900">{{ if .User.ID }}{{ .User.Name }}{{ else }}Unknown User{{ end }}</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">{{ .Action }}</span>
+            </td>
+            <td class="px-4 py-3 text-gray-700">{{ .Entity }}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">{{ if ne .EntityID.String "00000000-0000-0000-0000-000000000000" }}{{ .EntityID }}{{ else }}-{{ end }}</td>
+            <td class="px-4 py-3 text-xs text-gray-600">{{ if .Details }}{{ .Details }}{{ else }}-{{ end }}</td>
+          </tr>
+          {{ else }}
+          <tr>
+            <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">No activity logs yet.</td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{{ template "admin-footer" . }}
+{{ end }}

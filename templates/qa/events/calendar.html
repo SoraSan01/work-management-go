@@ -1,0 +1,100 @@
+{{ define "qa/events/calendar.html" }}
+{{ template "qa-header" . }}
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/main.min.css" rel="stylesheet" />
+
+<div class="space-y-6">
+  <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Event Calendar</h1>
+      <p class="text-sm text-gray-500">Plan, view, and manage your events.</p>
+    </div>
+    <button type="button" id="openCreateEventModal"
+            class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 transition">
+      <i class="fas fa-plus-circle"></i> New Event
+    </button>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+    <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col">
+      <div class="border-b border-gray-100 px-5 py-4">
+        <p class="text-xs uppercase tracking-wide text-gray-400">Selected Date</p>
+        <div class="flex items-center justify-between mt-1">
+          <h2 id="selected-date" class="text-lg font-semibold text-gray-900">Today</h2>
+          <span id="selected-count" class="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">0 events</span>
+        </div>
+      </div>
+      <ul id="event-list" class="px-5 py-4 flex-1 space-y-3 overflow-y-auto h-[calc(100%-4rem)]"></ul>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+      <div id="calendar"></div>
+    </div>
+  </div>
+</div>
+
+<div id="eventModal" class="fixed inset-0 z-50 hidden">
+  <div id="eventModalOverlay" class="absolute inset-0 bg-gray-900/50"></div>
+  <div class="relative mx-auto flex min-h-full max-w-lg items-center px-4 py-8">
+    <div class="w-full rounded-2xl bg-white shadow-xl overflow-hidden">
+      <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div>
+          <h2 id="eventModalTitle" class="text-lg font-semibold text-gray-900">New Event</h2>
+          <p id="eventModalSubtitle" class="text-sm text-gray-500">Create a new calendar event.</p>
+        </div>
+        <button id="closeEventModal" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form method="POST" action="/qa/events/store" id="eventModalForm" class="space-y-5 px-6 py-5">
+        <div>
+          <label for="eventTitle" class="text-sm font-medium text-gray-700">Title</label>
+          <input type="text" name="title" id="eventTitle" required
+                 class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+        </div>
+
+        <div>
+          <label for="eventDescription" class="text-sm font-medium text-gray-700">Description</label>
+          <textarea name="description" id="eventDescription" rows="3"
+                    class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"></textarea>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label for="eventStart" class="text-sm font-medium text-gray-700">Start</label>
+            <input type="datetime-local" name="start_time" id="eventStart" required
+                   class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+          </div>
+          <div>
+            <label for="eventEnd" class="text-sm font-medium text-gray-700">End</label>
+            <input type="datetime-local" name="end_time" id="eventEnd" required
+                   class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+          </div>
+        </div>
+
+        <div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+          <button type="button" id="cancelEventModal"
+                  class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">Cancel</button>
+          <button type="button" id="eventEditToggle"
+                  class="rounded-lg border border-blue-200 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 hidden">Edit</button>
+          <button type="submit" id="eventModalSubmit"
+                  class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition">Save Event</button>
+        </div>
+      </form>
+
+      <div class="flex justify-end border-t border-gray-100 px-6 py-4">
+        <form id="eventDeleteForm" method="POST" class="hidden">
+          <button type="submit"
+                  class="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script>
+<script src="/static/js/qa/event.js"></script>
+
+{{ template "qa-footer" . }}
+{{ end }}

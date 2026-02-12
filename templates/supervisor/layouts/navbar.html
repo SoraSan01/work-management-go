@@ -1,0 +1,199 @@
+{{ define "supervisor-navbar" }}
+<nav class="bg-white border-b border-gray-200 sticky top-0 z-20">
+  <div class="px-4 lg:px-6">
+    <div class="flex items-center justify-between h-16">
+      <!-- Left section -->
+      <div class="flex items-center gap-4">
+        <!-- Mobile sidebar toggle -->
+        <button class="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" 
+                id="mobileSidebarToggle"
+                aria-label="Toggle sidebar"
+                aria-expanded="false"
+                aria-controls="sidebar">
+          <i class="fas fa-bars text-gray-600"></i>
+        </button>
+        
+        <!-- Desktop sidebar toggle -->
+        <button class="hidden lg:block p-2 rounded-lg hover:bg-gray-100 transition-colors" 
+                id="desktopSidebarToggle"
+                aria-label="Toggle sidebar"
+                aria-expanded="true"
+                aria-controls="sidebar">
+          <i class="fas fa-chevron-left text-gray-600 transition-transform duration-200"></i>
+        </button>
+        
+        <!-- Breadcrumb -->
+        <div class="hidden md:flex items-center gap-2 text-sm">
+          <a href="/supervisor/dashboard" class="text-gray-500 hover:text-blue-600 transition-colors">
+            <i class="fas fa-home mr-1"></i>Home
+          </a>
+          {{ if .Breadcrumbs }}
+            {{ range .Breadcrumbs }}
+              <span class="text-gray-300">/</span>
+              {{ if .URL }}
+                <a href="{{ .URL }}" class="text-gray-500 hover:text-blue-600 transition-colors {{ if .Active }}font-medium text-gray-900{{ end }}">
+                  {{ .Title }}
+                </a>
+              {{ else }}
+                <span class="font-medium text-gray-900">{{ .Title }}</span>
+              {{ end }}
+            {{ end }}
+          {{ else }}
+            <span class="text-gray-300">/</span>
+            <span class="font-medium text-gray-900">Dashboard</span>
+          {{ end }}
+        </div>
+      </div>
+      
+      <!-- Mobile page title -->
+      <div class="md:hidden">
+        <h1 class="text-base font-semibold text-gray-900">
+          {{ if .PageTitle }}{{ .PageTitle }}{{ else }}Dashboard{{ end }}
+        </h1>
+      </div>
+      
+      <!-- Right section -->
+      <div class="flex items-center gap-3">
+        <!-- Search -->
+        <div class="hidden lg:block">
+          <div class="relative">
+            <input type="text" 
+                   placeholder="Search..." 
+                   class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          </div>
+        </div>
+        
+        <!-- Notifications -->
+        <div class="relative">
+          <button class="relative p-2 rounded-lg hover:bg-gray-100 transition-colors" 
+                  id="notificationsToggle"
+                  aria-label="Notifications"
+                  aria-haspopup="true"
+                  aria-expanded="false">
+            <i class="fas fa-bell text-gray-600"></i>
+            {{ if .NotificationCount }}
+              <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                {{ .NotificationCount }}
+              </span>
+            {{ end }}
+          </button>
+          
+          <!-- Notifications dropdown -->
+          <div id="notificationsDropdown" 
+               class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 hidden"
+               role="menu">
+            <div class="p-4 border-b border-gray-100">
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">Notifications</h3>
+                {{ if .NotificationCount }}
+                  <button class="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                          id="markAllReadBtn">
+                    Mark all read
+                  </button>
+                {{ end }}
+              </div>
+            </div>
+            
+            <div class="max-h-96 overflow-y-auto custom-scrollbar">
+              {{ if .Notifications }}
+                {{ range .Notifications }}
+                  <a href="{{ .Link }}" 
+                     class="notification-item block p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors {{ if not .Read }}bg-blue-50/50{{ end }}"
+                     data-notification-id="{{ .ID }}">
+                    <div class="flex items-start gap-3">
+                      <div class="flex-shrink-0">
+                        <div class="w-10 h-10 rounded-lg bg-{{ .Color }}-100 flex items-center justify-center">
+                          <i class="fas fa-{{ .Icon }} text-{{ .Color }}-600"></i>
+                        </div>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm text-gray-700">{{ .Message }}</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ .Time }}</p>
+                      </div>
+                      {{ if not .Read }}
+                        <div class="flex-shrink-0">
+                          <span class="w-2 h-2 bg-blue-600 rounded-full"></span>
+                        </div>
+                      {{ end }}
+                    </div>
+                  </a>
+                {{ end }}
+              {{ else }}
+                <div class="p-8 text-center">
+                  <i class="fas fa-bell-slash text-4xl text-gray-300 mb-3"></i>
+                  <p class="text-sm text-gray-500">No notifications</p>
+                </div>
+              {{ end }}
+            </div>
+            
+            {{ if .Notifications }}
+              <div class="p-3 border-t border-gray-100">
+                <a href="/supervisor/notifications" 
+                   class="block text-center text-sm text-blue-600 hover:text-blue-700 transition-colors">
+                  View all notifications
+                </a>
+              </div>
+            {{ end }}
+          </div>
+        </div>
+        
+        <!-- Profile dropdown -->
+        <div class="relative">
+          <button class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  id="profileToggle"
+                  aria-label="User menu"
+                  aria-haspopup="true"
+                  aria-expanded="false">
+            <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-20">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </div>
+          </button>
+          
+          <!-- Profile dropdown menu -->
+          <div id="profileDropdown" 
+               class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 hidden"
+               role="menu">
+            <div class="p-4 border-b border-gray-100">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                  {{ if .UserInitials }}{{ .UserInitials }}{{ else }}AD{{ end }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-semibold text-gray-900 truncate">
+                  {{ if .UserName }}{{ .UserName }}{{ else }}Supervisor{{ end }}
+                </h4>
+                <p class="text-sm text-gray-500 truncate">
+                    {{ if .UserEmail }}{{ .UserEmail }}{{ else }}supervisor@example.com{{ end }}
+                </p>
+              </div>
+            </div>
+          </div>
+            
+            <div class="p-2">
+              <a href="/supervisor/profile" 
+                 class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">
+                <i class="fas fa-user text-gray-500 w-5"></i>
+                <span class="text-sm text-gray-700">My Profile</span>
+              </a>
+            </div>
+            
+            <div class="p-2 border-t border-gray-100">
+              <a href="/logout" 
+                 id="logoutBtn"
+                 class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-50 transition-colors text-red-600">
+                <i class="fas fa-sign-out-alt w-5"></i>
+                <span class="text-sm font-medium">Sign Out</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<script src="/static/js/supervisor/navbar.js"></script>
+{{ end }}

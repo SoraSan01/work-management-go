@@ -1,0 +1,220 @@
+{{ define "admin/roles/list.html" }}
+{{ template "admin-header" . }}
+
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Roles</h1>
+      <p class="text-sm text-gray-500">Manage user roles and their permissions</p>
+    </div>
+    <button type="button"
+       id="openAddRoleModalEmpty"
+       class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+      <i class="fas fa-plus-circle"></i>
+      <span>Add Role</span>
+    </button>
+  </div>
+
+  <!-- Error Message -->
+  {{ if .Error }}
+  <div class="rounded-lg bg-red-50 border border-red-200 p-4">
+    <div class="flex items-center">
+      <i class="fas fa-exclamation-circle text-red-500 mr-3"></i>
+      <p class="text-red-800 font-medium">{{ .Error }}</p>
+    </div>
+  </div>
+  {{ end }}
+
+  <!-- Table -->
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-sm font-semibold text-gray-900">All Roles</h2>
+          <p class="text-xs text-gray-500">Search, sort, and manage roles.</p>
+        </div>
+        <div class="w-full sm:w-64">
+          <label class="sr-only" for="rolesSearch">Search roles</label>
+          <div class="relative">
+            <input id="rolesSearch"
+                  type="text"
+                  placeholder="Search roles..."
+                  class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pl-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
+          </div>
+        </div>
+      </div>
+
+      {{ if .Roles }}
+      <div class="overflow-x-auto">
+        <table id="rolesTable" class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="px-4 py-3">
+                <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="name">
+                  <span>Role Name</span>
+                  <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+                </button>
+              </th>
+              <th class="px-4 py-3">
+                <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="permissions">
+                  <span>Permissions</span>
+                  <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+                </button>
+              </th>
+              <th class="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{ range .Roles }}
+            <tr data-name="{{ .Name }}" data-permissions="{{ len .Permissions }}">
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                    <i class="fas fa-user-shield"></i>
+                  </div>
+                  <div>
+                    <p class="font-medium text-gray-900">{{ .Name }}</p>
+                    <p class="text-xs text-gray-500">
+                      {{ len .Permissions }} {{ if eq (len .Permissions) 1 }}permission{{ else }}permissions{{ end }}
+                    </p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                {{ if .Permissions }}
+                <div class="flex flex-wrap gap-1.5 max-w-md">
+                  {{ range .Permissions }}
+                  <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                    {{ .Name }}
+                  </span>
+                  {{ end }}
+                </div>
+                {{ else }}
+                <span class="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700">
+                  No permissions assigned
+                </span>
+                {{ end }}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="inline-flex items-center gap-2">
+                  <button type="button"
+                    class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+                    title="Edit role"
+                    data-edit-role
+                    data-edit-url="/admin/roles/update/{{ .ID }}"
+                    data-role-name="{{ .Name }}"
+                    data-role-permissions='[
+                      {{- range $i, $p := .Permissions -}}
+                        {{ if $i }},{{ end }}"{{ $p.ID }}"
+                      {{- end -}}
+                    ]'
+                    >
+                    <i class="fas fa-pen"></i>
+                    <span>Edit</span>
+                  </button>
+                  <a href="/admin/roles/delete/{{ .ID }}"
+                    class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                    onclick="return confirm('Are you sure you want to delete the {{ .Name }} role? This action cannot be undone.')"
+                    title="Delete role">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete</span>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="text-xs text-gray-500" id="rolesTableInfo"></div>
+        <div class="flex items-center gap-2" id="rolesTablePagination"></div>
+      </div>
+      {{ else }}
+      <div class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+          <i class="fas fa-user-shield text-2xl"></i>
+        </div>
+        <h3 class="text-sm font-semibold text-gray-900">No roles yet</h3>
+        <p class="text-sm text-gray-500">Get started by creating your first role to manage permissions.</p>
+        <a href="/admin/roles/create"
+          class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+          <i class="fas fa-plus-circle"></i>
+          <span>Create Role</span>
+        </a>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+
+<!-- Add Role Modal -->
+<div id="addRoleModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-gray-900/50" id="addRoleModalOverlay"></div>
+  <div class="relative mx-auto flex min-h-full max-w-2xl items-center px-4 py-8">
+    <div class="w-full rounded-2xl bg-white shadow-xl">
+      <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900" id="roleModalTitle">Add Role</h2>
+          <p class="text-sm text-gray-500" id="roleModalSubtitle">Create a new role.</p>
+        </div>
+        <button type="button"
+                id="closeAddRoleModal"
+                class="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form method="POST" action="/admin/roles/store" class="space-y-5 px-6 py-5" id="roleModalForm">
+        <div class="grid gap-4 sm:grid-cols">
+          <div>
+            <label class="text-sm font-medium text-gray-700">Name</label>
+            <input type="text" name="name" id="roleName" required
+                   class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-gray-700 mb-2 block">
+            Permissions
+          </label>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto rounded-lg border border-gray-200 p-3">
+              {{ range .Permissions }}
+              <label class="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  name="permissions"
+                  value="{{ .ID }}"
+                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  data-permission-checkbox
+                />
+                <span>{{ .Name }}</span>
+              </label>
+              {{ end }}
+          </div>
+        </div>
+
+        <div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+          <button type="button"
+                  id="cancelAddRoleModal"
+                  class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit"
+                  class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                  id="roleModalSubmit">
+            Create Role
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/admin/role.js"></script>
+
+{{ template "admin-footer" . }}
+{{ end }}

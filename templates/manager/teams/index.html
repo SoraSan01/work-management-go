@@ -1,0 +1,141 @@
+{{ define "manager/teams/index.html" }}
+{{ template "manager-header" . }}
+
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-gray-900">Team Management</h1>
+    <p class="text-sm text-gray-500">Create teams and assign supervisors and members.</p>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <h2 class="text-sm font-semibold text-gray-900">Create Team</h2>
+    <form action="/manager/teams/store" method="POST" class="mt-4 grid gap-4 md:grid-cols-3">
+      <div class="md:col-span-1">
+        <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Team Name</label>
+        <input type="text" name="name" required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+      </div>
+      <div class="md:col-span-1">
+        <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Supervisor</label>
+        <select name="supervisor_id" required class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+          <option value="">Select supervisor</option>
+          {{ range .supervisors }}
+          <option value="{{ .ID }}">{{ .FirstName }} {{ .LastName }}</option>
+          {{ end }}
+        </select>
+      </div>
+      <div class="md:col-span-1">
+        <label class="text-xs font-semibold uppercase tracking-wide text-gray-500">Members</label>
+        <select name="member_ids[]" multiple class="mt-1 h-28 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+          {{ range .employees }}
+          <option value="{{ .ID }}">{{ .FirstName }} {{ .LastName }}</option>
+          {{ end }}
+        </select>
+      </div>
+      <div class="md:col-span-3">
+        <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Create Team</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900">All Teams</h2>
+        <p class="text-xs text-gray-500">Search and manage teams, supervisors, and members.</p>
+      </div>
+      <div class="w-full sm:w-64">
+        <label class="sr-only" for="teamsSearch">Search teams</label>
+        <div class="relative">
+          <input id="teamsSearch"
+                 type="text"
+                 placeholder="Search teams..."
+                 class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pl-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+          <i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
+        </div>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table id="teamsTable" class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="name">
+                <span>Team</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="supervisor">
+                <span>Supervisor</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="members">
+                <span>Members</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">Update Assignment</th>
+            <th class="px-4 py-3">Delete</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {{ range .teams }}
+          {{ $team := . }}
+          <tr
+            data-name="{{ .Name }}"
+            data-supervisor="{{ .Supervisor.FirstName }} {{ .Supervisor.LastName }}"
+            data-members="{{ range $index, $member := .Members }}{{ if $index }}|{{ end }}{{ $member.FirstName }} {{ $member.LastName }}{{ end }}"
+            data-created="{{ .CreatedAt.Format "2006-01-02" }}">
+            <td class="px-4 py-3 font-medium text-gray-900">{{ .Name }}</td>
+            <td class="px-4 py-3 text-gray-700">{{ .Supervisor.FirstName }} {{ .Supervisor.LastName }}</td>
+            <td class="px-4 py-3 text-gray-600">
+              {{ if .Members }}
+                {{ range .Members }}
+                  <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 mr-1 mb-1">{{ .FirstName }} {{ .LastName }}</span>
+                {{ end }}
+              {{ else }}
+                <span class="text-xs text-gray-500">No members</span>
+              {{ end }}
+            </td>
+            <td class="px-4 py-3">
+              <form action="/manager/teams/update/{{ .ID }}" method="POST" class="space-y-2">
+                <input type="text" name="name" value="{{ .Name }}" required class="w-full rounded-lg border border-gray-300 px-2 py-1 text-xs">
+                <select name="supervisor_id" required class="w-full rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs">
+                  {{ range $.supervisors }}
+                  <option value="{{ .ID }}" {{ if eq .ID $team.Supervisor.ID }}selected{{ end }}>{{ .FirstName }} {{ .LastName }}</option>
+                  {{ end }}
+                </select>
+                <select name="member_ids[]" multiple class="h-24 w-full rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs">
+                  {{ range $.employees }}
+                  <option value="{{ .ID }}">{{ .FirstName }} {{ .LastName }}</option>
+                  {{ end }}
+                </select>
+                <button type="submit" class="rounded-lg bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700">Update</button>
+              </form>
+            </td>
+            <td class="px-4 py-3">
+              <form action="/manager/teams/delete/{{ .ID }}" method="POST" onsubmit="return confirm('Delete this team?');">
+                <button type="submit" class="rounded-lg bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {{ else }}
+          <tr>
+            <td colspan="5" class="px-4 py-12 text-center text-sm text-gray-500">No teams found.</td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+    <div class="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-xs text-gray-500" id="teamsTableInfo"></div>
+      <div class="flex items-center gap-2" id="teamsTablePagination"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/admin/teams.js"></script>
+{{ template "manager-footer" . }}
+{{ end }}

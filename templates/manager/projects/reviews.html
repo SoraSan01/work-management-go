@@ -1,0 +1,156 @@
+{{ define "manager/projects/reviews.html" }}
+{{ template "manager-header" . }}
+
+<div class="space-y-6">
+  <div class="flex flex-col gap-2">
+    <h1 class="text-2xl font-semibold text-gray-900">Project Reviews</h1>
+    <p class="text-sm text-gray-500">Review your assigned projects and approve or reject the initial workflow.</p>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900">Assigned Projects</h2>
+        <p class="text-xs text-gray-500">Search, sort, and review projects.</p>
+      </div>
+      <div class="w-full sm:w-64">
+        <label class="sr-only" for="projectsSearch">Search projects</label>
+        <div class="relative">
+          <input id="projectsSearch"
+                 type="text"
+                 placeholder="Search projects..."
+                 class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pl-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+          <i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table id="projectsTable" class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="name">
+                <span>Project</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="manager">
+                <span>Supervisor</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="status">
+                <span>Status</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <span>Approval</span>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="approver">
+                <span>QA Approver</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {{ range .projects }}
+          <tr
+            data-name="{{ .Name }}"
+            data-status="{{ .Status }} {{ .ApprovalStatus }}"
+            data-manager="{{ if .Team.Supervisor }}{{ .Team.Supervisor.Name }}{{ end }}"
+            data-approver="{{ if .Approver }}{{ .Approver.Name }}{{ end }}">
+            <td class="px-4 py-3 align-top">
+              <p class="font-medium text-gray-900">{{ .Name }}</p>
+              <p class="text-xs text-gray-500">{{ if .Description }}{{ .Description }}{{ else }}No description{{ end }}</p>
+            </td>
+            <td class="px-4 py-3 align-top">
+              {{ if .Team.Supervisor }}{{ .Team.Supervisor.Name }}{{ else }}-{{ end }}
+            </td>
+            <td class="px-4 py-3 align-top">
+              <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">{{ .Status }}</span>
+            </td>
+            <td class="px-4 py-3 align-top">
+              {{ if eq .ApprovalStatus "pending_initial_approval" }}
+                <span class="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700">Pending Review</span>
+              {{ else if eq .ApprovalStatus "approved" }}
+                <span class="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Approved</span>
+              {{ else if eq .ApprovalStatus "rejected" }}
+                <span class="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700">Rejected</span>
+              {{ else }}
+                <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">{{ .ApprovalStatus }}</span>
+              {{ end }}
+            </td>
+            <td class="px-4 py-3 align-top">
+              {{ if .Approver }}
+                <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{{ .Approver.Name }}</span>
+              {{ else }}
+                <form action="/manager/projects/{{ .ID }}/assign-approver" method="POST" class="space-y-2">
+                  <select name="approver_id" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs">
+                    <option value="">Assign QA</option>
+                    {{ range $.approvers }}
+                    <option value="{{ .ID }}">{{ .Name }}</option>
+                    {{ end }}
+                  </select>
+                  <button type="submit" class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+                    Assign QA
+                  </button>
+                </form>
+              {{ end }}
+            </td>
+            <td class="px-4 py-3 align-top">
+              {{ if eq .ApprovalStatus "pending_initial_approval" }}
+              <form action="/manager/projects/reviews/{{ .ID }}" method="POST" class="space-y-2">
+                <input type="hidden" name="decision" value="">
+                <textarea name="comment" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs" placeholder="Optional comment"></textarea>
+                <div class="flex gap-2">
+                  <button type="button" data-decision="approved" class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">
+                    Approve
+                  </button>
+                  <button type="button" data-decision="rejected" class="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700">
+                    Reject
+                  </button>
+                </div>
+              </form>
+              {{ else }}
+              <span class="text-xs text-gray-500">No action required</span>
+              {{ end }}
+            </td>
+          </tr>
+          {{ else }}
+          <tr>
+            <td colspan="6" class="px-4 py-12 text-center text-sm text-gray-500">No projects assigned for manager review.</td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+    </div>
+    <div class="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-xs text-gray-500" id="projectsTableInfo"></div>
+      <div class="flex items-center gap-2" id="projectsTablePagination"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll("form[action^='/manager/projects/reviews/'] button[data-decision]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const form = button.closest("form");
+      if (!form) return;
+      const decisionInput = form.querySelector("input[name='decision']");
+      if (!decisionInput) return;
+      decisionInput.value = button.dataset.decision || "";
+      form.submit();
+    });
+  });
+</script>
+<script src="/static/js/admin/projects.js"></script>
+
+{{ template "manager-footer" . }}
+{{ end }}

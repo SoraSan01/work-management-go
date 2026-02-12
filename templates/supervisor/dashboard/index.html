@@ -1,0 +1,101 @@
+{{ define "supervisor/dashboard/index.html" }}
+{{ template "supervisor-header" . }}
+
+<div class="space-y-6">
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Supervisor Dashboard</h1>
+      <p class="text-sm text-gray-500">Overview of your team delivery progress.</p>
+    </div>
+    <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+      {{ .CompletionRate }}% task completion
+    </span>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Projects</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .TotalProjects }}</p>
+      <p class="mt-1 text-xs text-gray-500">{{ .CompletedProjects }} completed</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Team Members</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .TeamMemberCount }}</p>
+      <p class="mt-1 text-xs text-gray-500">Directly under your supervision</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Tasks Done</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .DoneTasks }} / {{ .TotalTasks }}</p>
+      <p class="mt-1 text-xs text-gray-500">Across all assigned projects</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Final QA Queue</p>
+      <p class="mt-2 text-2xl font-semibold text-gray-900">{{ .PendingFinalQA }}</p>
+      <p class="mt-1 text-xs text-gray-500">Projects pending final QA review</p>
+    </div>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-3">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 class="text-sm font-semibold text-gray-900">Task Pipeline</h2>
+      <div class="mt-4 space-y-3 text-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">To Do</span>
+          <span class="font-semibold text-gray-900">{{ .TodoTasks }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">In Progress</span>
+          <span class="font-semibold text-gray-900">{{ .InProgressTasks }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">For Review</span>
+          <span class="font-semibold text-gray-900">{{ .ForReviewTasks }}</span>
+        </div>
+        <div class="flex items-center justify-between border-t border-gray-100 pt-2">
+          <span class="text-gray-700">Done</span>
+          <span class="font-semibold text-green-700">{{ .DoneTasks }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm lg:col-span-2">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-900">Recent Task Activity</h2>
+        <a href="/supervisor/tasks/board" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Open Board</a>
+      </div>
+      {{ if .RecentTasks }}
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th class="py-2 pr-4">Task</th>
+              <th class="py-2 pr-4">Project</th>
+              <th class="py-2 pr-4">Assignee</th>
+              <th class="py-2 pr-4">Status</th>
+              <th class="py-2">Updated</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {{ range .RecentTasks }}
+            <tr>
+              <td class="py-2 pr-4 font-medium text-gray-900">{{ .Title }}</td>
+              <td class="py-2 pr-4 text-gray-700">{{ if .Project }}{{ .Project.Name }}{{ else }}-{{ end }}</td>
+              <td class="py-2 pr-4 text-gray-700">{{ if .Assignee }}{{ .Assignee.Name }}{{ else }}-{{ end }}</td>
+              <td class="py-2 pr-4 text-gray-700">{{ .Status }}</td>
+              <td class="py-2 text-gray-500">{{ .UpdatedAt.Format "Jan 02, 2006 03:04 PM" }}</td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+      {{ else }}
+      <div class="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+        <p class="text-sm text-gray-500">No task activity yet.</p>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</div>
+
+{{ template "supervisor-footer" . }}
+{{ end }}
