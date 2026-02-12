@@ -15,11 +15,6 @@ func NewEventRepository(db *gorm.DB) *EventRepository {
 	return &EventRepository{DB: db}
 }
 
-func (r *EventRepository) GetAllEvents() ([]models.CalendarEvent, error) {
-	var events []models.CalendarEvent
-	return events, r.DB.Find(&events).Error
-}
-
 func (r *EventRepository) GetAllEventsByUser(userID uuid.UUID) ([]models.CalendarEvent, error) {
 	var events []models.CalendarEvent
 	err := r.DB.

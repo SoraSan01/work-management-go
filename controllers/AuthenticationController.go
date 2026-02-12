@@ -60,7 +60,9 @@ func (ac *AuthenticationController) Login(c *gin.Context) {
 }
 
 func (ac *AuthenticationController) SignupPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "authentication/register.html", gin.H{})
+	c.HTML(http.StatusOK, "authentication/register.html", gin.H{
+		"title": "Sign Up",
+	})
 }
 
 func (ac *AuthenticationController) Signup(c *gin.Context) {
@@ -162,7 +164,9 @@ func (ac *AuthenticationController) RefreshToken(c *gin.Context) {
 // Forgot Password
 // --------------------
 func (ac *AuthenticationController) ForgotPasswordPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "authentication/forgot_password.html", gin.H{})
+	c.HTML(http.StatusOK, "authentication/forgot_password.html", gin.H{
+		"title": "Forgot Password",
+	})
 }
 
 func (ac *AuthenticationController) ForgotPassword(c *gin.Context) {
@@ -200,6 +204,7 @@ func (ac *AuthenticationController) ResetPasswordPage(c *gin.Context) {
 	token := c.Query("token")
 	c.HTML(http.StatusOK, "authentication/reset_password.html", gin.H{
 		"token": token,
+		"title": "Reset Password",
 	})
 }
 

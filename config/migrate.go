@@ -19,7 +19,6 @@ func Migrate() {
 		&models.File{},
 		&models.ProjectFinalFile{},
 		&models.Customer{},
-		&models.Comment{},
 		&models.CalendarEvent{},
 		&models.TaskReviewComment{},
 		&models.Approval{},
@@ -27,5 +26,11 @@ func Migrate() {
 	)
 	if err != nil {
 		panic(err)
+	}
+
+	if DB.Migrator().HasTable("comments") {
+		if err := DB.Migrator().DropTable("comments"); err != nil {
+			panic(err)
+		}
 	}
 }

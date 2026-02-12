@@ -74,7 +74,9 @@ func SetupRoutes(r *gin.Engine) {
 	})
 
 	r.GET("/login", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "authentication/login.html", gin.H{})
+		c.HTML(http.StatusOK, "authentication/login.html", gin.H{
+			"title": "Login",
+		})
 	})
 	r.POST("/login", authController.Login)
 	r.GET("/signup", authController.SignupPage)

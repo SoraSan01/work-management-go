@@ -124,14 +124,6 @@ func (r *ProjectRepository) UpdateApproval(id string, status string, comment str
 	return r.DB.Model(&models.Approval{}).Where("id = ?", id).Updates(updates).Error
 }
 
-// Get projects by approval status
-func (r *ProjectRepository) GetProjectsByApprovalStatus(status string) ([]models.Project, error) {
-	var projects []models.Project
-	err := r.DB.Preload("Manager").Preload("Approver").Preload("Approvals").
-		Where("approval_status = ?", status).Find(&projects).Error
-	return projects, err
-}
-
 func (r *ProjectRepository) GetBySupervisorID(supervisorID uuid.UUID) ([]models.Project, error) {
 	var projects []models.Project
 	err := r.DB.

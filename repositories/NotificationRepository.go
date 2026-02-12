@@ -20,10 +20,6 @@ func (r *NotificationRepository) Create(notification *models.Notification) error
 	return r.DB.Create(notification).Error
 }
 
-func (r *NotificationRepository) CreateForUser(userID uuid.UUID, message string) error {
-	return r.CreateForUserWithLink(userID, message, "")
-}
-
 func (r *NotificationRepository) CreateForUserWithLink(userID uuid.UUID, message, link string) error {
 	notification := models.Notification{
 		UserID:    userID,
@@ -33,10 +29,6 @@ func (r *NotificationRepository) CreateForUserWithLink(userID uuid.UUID, message
 		CreatedAt: time.Now(),
 	}
 	return r.DB.Create(&notification).Error
-}
-
-func (r *NotificationRepository) CreateForAllUsers(message string) error {
-	return r.CreateForAllUsersWithLink(message, "")
 }
 
 func (r *NotificationRepository) CreateForAllUsersWithLink(message, link string) error {
@@ -72,14 +64,6 @@ func (r *NotificationRepository) RecentByUser(userID uuid.UUID, limit int) ([]mo
 	}
 	err := q.Find(&notifications).Error
 	return notifications, err
-}
-
-func (r *NotificationRepository) CountUnreadByUser(userID uuid.UUID) (int64, error) {
-	var count int64
-	err := r.DB.Model(&models.Notification{}).
-		Where("user_id = ? AND is_read = ?", userID, false).
-		Count(&count).Error
-	return count, err
 }
 
 func (r *NotificationRepository) MarkRead(userID, notificationID uuid.UUID) error {

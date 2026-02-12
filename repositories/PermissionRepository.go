@@ -39,22 +39,6 @@ func (r *PermissionRepository) Delete(id uuid.UUID) error {
 	return r.DB.Delete(&models.Permission{}, "id = ?", id).Error
 }
 
-func (r *PermissionRepository) GetByIDString(idStr string) (*models.Permission, error) {
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		return nil, err
-	}
-	return r.GetByID(id)
-}
-
 func (r *PermissionRepository) Update(permission *models.Permission) error {
 	return r.DB.Save(permission).Error
-}
-
-func (r *PermissionRepository) DeleteByIDString(idStr string) error {
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		return err
-	}
-	return r.Delete(id)
 }
