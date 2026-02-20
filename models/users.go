@@ -7,13 +7,11 @@ import (
 )
 
 type User struct {
-	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	Email        string    `gorm:"unique;not null" json:"email"`
-	PasswordHash string    `gorm:"not null" json:"-"`
-	RoleID       uuid.UUID `gorm:"type:uuid" json:"role_id"`
-	Role         Role      `gorm:"foreignKey:RoleID" json:"role"`
-	ManagerID    *uuid.UUID
-	Manager      *User        `gorm:"foreignKey:ManagerID;references:ID;constraint:OnDelete:SET NULL"`
+	ID           uuid.UUID    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	Email        string       `gorm:"unique;not null" json:"email"`
+	PasswordHash string       `gorm:"not null" json:"-"`
+	RoleID       uuid.UUID    `gorm:"type:uuid" json:"role_id"`
+	Role         Role         `gorm:"foreignKey:RoleID" json:"role"`
 	DepartmentID *uuid.UUID   `gorm:"type:uuid" json:"department_id"`
 	Department   *Department  `gorm:"foreignKey:DepartmentID" json:"department"`
 	FirstName    string       `json:"first_name"`
