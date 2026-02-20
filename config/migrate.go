@@ -6,6 +6,7 @@ import (
 
 func Migrate() {
 	err := DB.AutoMigrate(
+		&models.Project{},
 		&models.User{},
 		&models.TeamMember{},
 		&models.Team{},
@@ -13,7 +14,6 @@ func Migrate() {
 		&models.RolePermission{},
 		&models.Role{},
 		&models.ProjectRequest{},
-		&models.Project{},
 		&models.Permission{},
 		&models.Notification{},
 		&models.File{},
