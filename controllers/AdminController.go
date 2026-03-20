@@ -54,7 +54,7 @@ func (ac *AdminController) Index(c *gin.Context) {
 	_ = ac.Repo.DB.Model(&models.Team{}).Count(&totalTeams).Error
 	_ = ac.Repo.DB.Model(&models.Department{}).Count(&totalDepartments).Error
 	_ = ac.Repo.DB.Model(&models.Project{}).Where("approval_status = ?", "pending_initial_approval").Count(&pendingInitialApprovals).Error
-	_ = ac.Repo.DB.Model(&models.Project{}).Where("final_qa_status = ?", "pending_qa_review").Count(&pendingFinalQA).Error
+	_ = ac.Repo.DB.Model(&models.Project{}).Where("approval_status = ?", "pending_final_qa").Count(&pendingFinalQA).Error
 
 	userID, err := uuid.Parse(c.GetString("user_id"))
 	if err == nil {

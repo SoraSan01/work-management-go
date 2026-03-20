@@ -14,8 +14,11 @@ type User struct {
 	Role         Role         `gorm:"foreignKey:RoleID" json:"role"`
 	DepartmentID *uuid.UUID   `gorm:"type:uuid" json:"department_id"`
 	Department   *Department  `gorm:"foreignKey:DepartmentID" json:"department"`
+	ManagerID    *uuid.UUID   `gorm:"type:uuid" json:"manager_id"`
+	Manager      *User        `gorm:"foreignKey:ManagerID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"manager,omitempty"`
 	FirstName    string       `json:"first_name"`
 	LastName     string       `json:"last_name"`
+	Nationality  string       `json:"nationality"`
 	IsActive     bool         `gorm:"default:true" json:"is_active"`
 	Permissions  []Permission `gorm:"many2many:user_permissions" json:"permissions"` // individual overrides
 	CreatedAt    time.Time    `json:"created_at"`

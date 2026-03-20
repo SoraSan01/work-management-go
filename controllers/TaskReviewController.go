@@ -70,9 +70,25 @@ func (trc *TaskReviewController) ListComments(c *gin.Context) {
 			return
 		}
 	}
+	if role == "supervisor" {
+		var canAccess int64
+		if err := trc.TaskRepo.DB.
+			Table("tasks").
+			Joins("JOIN projects ON projects.id = tasks.project_id AND projects.deleted_at IS NULL").
+			Joins("JOIN teams ON teams.id = projects.team_id").
+			Where("tasks.id = ? AND teams.supervisor_id = ?", taskID, userID).
+			Count(&canAccess).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate task review access"})
+			return
+		}
+		if canAccess == 0 {
+			c.JSON(http.StatusForbidden, gin.H{"error": "you can only view comments for tasks in your own team"})
+			return
+		}
+	}
 
 	// Assigned employee can read comments on their task; admin can read all.
-	if role != "admin" && role != "qualityassurance" && role != "manager" && task.AssignedTo != userID {
+	if role != "admin" && role != "qualityassurance" && role != "manager" && role != "supervisor" && task.AssignedTo != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "you cannot view comments for this task"})
 		return
 	}
@@ -206,11 +222,15 @@ func (trc *TaskReviewController) SubmitReview(c *gin.Context) {
 		}
 		task.Status = "done"
 		task.StartedAt = nil
+		task.IsPaused = false
 		if err := trc.TaskRepo.Update(task); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task"})
 			return
 		}
-		_ = trc.ProjectRepo.SyncWorkflowStatus(task.ProjectID)
+		if err := trc.ProjectRepo.SyncWorkflowStatus(task.ProjectID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sync project status"})
+			return
+		}
 	}
 
 	if action == "rejected" {
@@ -222,11 +242,15 @@ func (trc *TaskReviewController) SubmitReview(c *gin.Context) {
 		}
 		task.Status = "in_progress"
 		task.StartedAt = nil
+		task.IsPaused = true
 		if err := trc.TaskRepo.Update(task); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task"})
 			return
 		}
-		_ = trc.ProjectRepo.SyncWorkflowStatus(task.ProjectID)
+		if err := trc.ProjectRepo.SyncWorkflowStatus(task.ProjectID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sync project status"})
+			return
+		}
 	}
 
 	_ = trc.NotifyRepo.CreateForUserWithLink(task.AssignedTo, "Task review update: "+task.Title+" ("+action+")", "/employee/tasks/board")

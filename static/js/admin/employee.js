@@ -85,7 +85,7 @@
     if (filteredRows.length === 0) {
       const empty = document.createElement('tr');
       empty.innerHTML = `
-        <td colspan="3" class="px-4 py-10 text-center text-sm text-gray-500">
+        <td colspan="4" class="px-4 py-10 text-center text-sm text-gray-500">
           No employees match your search.
         </td>
       `;
@@ -142,7 +142,8 @@
       filteredRows = rows.filter(row => {
         const name = normalize(row.dataset.name);
         const role = normalize(row.dataset.role);
-        return name.includes(query) || role.includes(query);
+        const nationality = normalize(row.dataset.nationality);
+        return name.includes(query) || role.includes(query) || nationality.includes(query);
       });
       currentPage = 1;
       render();
@@ -178,8 +179,10 @@
   const inputFirst = document.getElementById('employeeFirstName');
   const inputLast = document.getElementById('employeeLastName');
   const inputEmail = document.getElementById('employeeEmail');
+  const inputNationality = document.getElementById('employeeNationality');
   const selectRole = document.getElementById('employeeRoleId');
   const selectDepartment = document.getElementById('employeeDepartmentId');
+  const selectManager = document.getElementById('employeeManagerId');
   const inputPassword = document.getElementById('employeePassword');
   const inputConfirm = document.getElementById('employeeConfirmPassword');
 
@@ -204,8 +207,10 @@
     if (inputFirst) inputFirst.value = '';
     if (inputLast) inputLast.value = '';
     if (inputEmail) inputEmail.value = '';
+    if (inputNationality) inputNationality.value = '';
     if (selectRole) selectRole.value = '';
     if (selectDepartment) selectDepartment.value = '';
+    if (selectManager) selectManager.value = '';
     if (inputPassword) {
       inputPassword.value = '';
       inputPassword.required = true;
@@ -225,8 +230,10 @@
     if (inputFirst) inputFirst.value = data.firstName || '';
     if (inputLast) inputLast.value = data.lastName || '';
     if (inputEmail) inputEmail.value = data.email || '';
+    if (inputNationality) inputNationality.value = data.nationality || '';
     if (selectRole) selectRole.value = data.roleId || '';
     if (selectDepartment) selectDepartment.value = data.departmentId || '';
+    if (selectManager) selectManager.value = data.managerId || '';
     if (inputPassword) {
       inputPassword.value = '';
       inputPassword.required = false;
@@ -242,18 +249,21 @@
     openModal();
   }));
 
-  document.querySelectorAll('[data-edit-employee]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      setEditMode({
-        editUrl: btn.dataset.editUrl,
-        firstName: btn.dataset.firstName,
-        lastName: btn.dataset.lastName,
-        email: btn.dataset.email,
-        roleId: btn.dataset.roleId,
-        departmentId: btn.dataset.departmentId
-      });
-      openModal();
+  document.addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-edit-employee]');
+    if (!btn) return;
+
+    setEditMode({
+      editUrl: btn.dataset.editUrl,
+      firstName: btn.dataset.firstName,
+      lastName: btn.dataset.lastName,
+      email: btn.dataset.email,
+      nationality: btn.dataset.nationality,
+      roleId: btn.dataset.roleId,
+      departmentId: btn.dataset.departmentId,
+      managerId: btn.dataset.managerId
     });
+    openModal();
   });
 
   closeButtons.forEach(btn => btn.addEventListener('click', closeModal));

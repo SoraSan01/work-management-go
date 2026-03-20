@@ -1,0 +1,17 @@
+./activity_logs.go
+./approvals.go
+./calendar_event.go
+./customers.go
+./departments.go
+./files.go
+./notifications.go
+./permissions.go
+./project_requests.go
+./projects.go
+./role_permissions.go
+./roles.go
+./task_review_comments.go
+./tasks.go
+./team_members.go
+./teams.go
+./users.go

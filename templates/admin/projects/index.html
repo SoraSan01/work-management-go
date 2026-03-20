@@ -59,6 +59,12 @@
               </button>
             </th>
             <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="employee">
+                <span>Employee</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
               <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="approver">
                 <span>Approver</span>
                 <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
@@ -73,9 +79,12 @@
             data-name="{{ .Name }}"
             data-status="{{ .Status }}"
             data-manager="{{ if .Manager }}{{ .Manager.Name }}{{ end }}"
+            data-employee="{{ if .AssignedEmployee }}{{ .AssignedEmployee.Name }}{{ end }}"
+            data-priority="{{ .Priority }}"
             data-approver="{{ if .Approver }}{{ .Approver.Name }}{{ end }}"
             data-description="{{ .Description }}"
             data-manager-id="{{ .ManagerID }}"
+            data-employee-id="{{ if .AssignedEmployeeID }}{{ .AssignedEmployeeID }}{{ end }}"
             data-approver-id="{{ if .ApproverID }}{{ .ApproverID }}{{ end }}"
           >
             <td class="px-4 py-3">
@@ -108,6 +117,13 @@
               {{ end }}
             </td>
             <td class="px-4 py-3">
+              {{ with .AssignedEmployee }}
+                {{ .Name }}
+              {{ else }}
+                -
+              {{ end }}
+            </td>
+            <td class="px-4 py-3">
               {{ with .Approver }}
                 {{ .Name }}
               {{ else }}
@@ -118,9 +134,9 @@
               <div class="inline-flex items-center gap-2">
                 <a href="/admin/projects/{{ .ID }}/approval"
                   class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
-                  title="Review project approvals">
+                  title="View workflow status">
                   <i class="fas fa-clipboard-check"></i>
-                  <span>Review</span>
+                  <span>Workflow</span>
                 </a>
                 <button type="button"
                   class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
@@ -217,6 +233,18 @@
               {{ end }}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-gray-700">Assigned Employee</label>
+          <select name="AssignedEmployeeID" id="projectAssignedEmployeeId" required
+            class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">Select Employee</option>
+            {{ range .employees }}
+            <option value="{{ .ID }}">{{ .FirstName }} {{ .LastName }}</option>
+            {{ end }}
+          </select>
+          <p class="mt-2 text-xs text-gray-500">All tasks created under this project will go to this employee.</p>
         </div>
 
         <div>

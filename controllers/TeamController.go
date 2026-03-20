@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 	"work-management-system/models"
 	"work-management-system/repositories"
@@ -35,6 +36,9 @@ type OrgNode struct {
 	ParentID     string `json:"parentId"`
 	Name         string `json:"name"`
 	PositionName string `json:"positionName"`
+	NodeType     string `json:"nodeType"`
+	Nationality  string `json:"nationality,omitempty"`
+	Meta         string `json:"meta,omitempty"`
 	ImageURL     string `json:"imageUrl"`
 }
 
@@ -92,9 +96,10 @@ func (tc *TeamController) Index(c *gin.Context) {
 		return opts
 	}
 
-	if role == "admin" {
+	switch role {
+	case "admin":
 		templatePath = "admin/teams/index.html"
-	} else if role == "supervisor" {
+	case "supervisor":
 		templatePath = "supervisor/teams/index.html"
 	}
 
@@ -126,16 +131,17 @@ func (tc *TeamController) Chart(c *gin.Context) {
 		return
 	}
 
-	if role == "admin" {
+	switch role {
+	case "admin":
 		templatePath = "admin/teams/chart.html"
-	} else if role == "supervisor" {
+	case "supervisor":
 		templatePath = "supervisor/teams/chart.html"
 	}
 
 	c.HTML(http.StatusOK, templatePath, utils.TemplateContext(c, gin.H{
 		"ActivePage": "team-chart",
-		"Teams":    teams,
-		"Managers": managers,
+		"Teams":      teams,
+		"Managers":   managers,
 	}))
 }
 
@@ -321,41 +327,84 @@ func (tc *TeamController) OrgChartData(c *gin.Context) {
 		teams, _ = tc.Repo.GetAll()
 	}
 
+	managers, _ := tc.UserRepo.GetUsersByRole("Manager")
 	var nodes []OrgNode
 
 	rootID := "root"
 
-	// single root
 	nodes = append(nodes, OrgNode{
 		ID:           rootID,
 		ParentID:     "",
-		Name:         "Organization",
-		PositionName: "",
+		Name:         "Company",
+		PositionName: "Organization",
+		NodeType:     "company",
 	})
 
+	teamSet := make(map[uuid.UUID]models.Team, len(teams))
+	supervisorSet := make(map[uuid.UUID]models.User)
+	managerIDs := make(map[uuid.UUID]struct{})
+
 	for _, team := range teams {
+		teamSet[team.ID] = team
+		if team.Supervisor.ID != uuid.Nil {
+			supervisorSet[team.Supervisor.ID] = team.Supervisor
+			if team.Supervisor.ManagerID != nil && *team.Supervisor.ManagerID != uuid.Nil {
+				managerIDs[*team.Supervisor.ManagerID] = struct{}{}
+			}
+		}
+	}
 
-		teamID := team.ID.String()
-
-		// Team under root
-		nodes = append(nodes, OrgNode{
-			ID:           teamID,
-			ParentID:     rootID,
-			Name:         team.Name,
-			PositionName: "Team",
-		})
-
-		// Supervisor
-		if team.SupervisorID != uuid.Nil {
-			nodes = append(nodes, OrgNode{
-				ID:           team.Supervisor.ID.String(),
-				ParentID:     teamID,
-				Name:         team.Supervisor.FirstName + " " + team.Supervisor.LastName,
-				PositionName: "Supervisor",
-			})
+	for _, manager := range managers {
+		if role != "admin" {
+			if _, ok := managerIDs[manager.ID]; !ok {
+				continue
+			}
 		}
 
-		// Members
+		nodes = append(nodes, OrgNode{
+			ID:           manager.ID.String(),
+			ParentID:     rootID,
+			Name:         manager.Name(),
+			PositionName: "Manager",
+			NodeType:     "manager",
+			Nationality:  manager.Nationality,
+			Meta:         manager.Email,
+		})
+	}
+
+	for _, supervisor := range supervisorSet {
+		parentID := rootID
+		if supervisor.ManagerID != nil && *supervisor.ManagerID != uuid.Nil {
+			parentID = supervisor.ManagerID.String()
+		}
+
+		nodes = append(nodes, OrgNode{
+			ID:           supervisor.ID.String(),
+			ParentID:     parentID,
+			Name:         supervisor.Name(),
+			PositionName: "Supervisor",
+			NodeType:     "supervisor",
+			Nationality:  supervisor.Nationality,
+			Meta:         supervisor.Email,
+		})
+	}
+
+	for _, team := range teamSet {
+		teamID := team.ID.String()
+		parentID := rootID
+		if team.SupervisorID != uuid.Nil {
+			parentID = team.SupervisorID.String()
+		}
+
+		nodes = append(nodes, OrgNode{
+			ID:           teamID,
+			ParentID:     parentID,
+			Name:         team.Name,
+			PositionName: "Team",
+			NodeType:     "team",
+			Meta:         "Members: " + strconv.Itoa(len(team.Members)),
+		})
+
 		for _, m := range team.Members {
 			if m.ID == team.SupervisorID {
 				continue
@@ -364,8 +413,11 @@ func (tc *TeamController) OrgChartData(c *gin.Context) {
 			nodes = append(nodes, OrgNode{
 				ID:           m.ID.String(),
 				ParentID:     teamID,
-				Name:         m.FirstName + " " + m.LastName,
+				Name:         m.Name(),
 				PositionName: "Member",
+				NodeType:     "member",
+				Nationality:  m.Nationality,
+				Meta:         m.Email,
 			})
 		}
 	}

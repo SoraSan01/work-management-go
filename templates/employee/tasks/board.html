@@ -3,7 +3,7 @@
 
 <link rel="stylesheet" href="/static/css/board-style.css">
 
-<div id="taskBoardApp" class="space-y-6" data-start-base="/employee/tasks/start/" data-upload-base="/employee/tasks/upload/" data-files-base="/employee/tasks/files/" data-comments-base="/employee/tasks/review-comments/" data-review-base="/employee/tasks/review/" data-can-review="false">
+<div id="taskBoardApp" class="space-y-6" data-start-base="/employee/tasks/start/" data-pause-base="/employee/tasks/pause/" data-resume-base="/employee/tasks/resume/" data-upload-base="/employee/tasks/upload/" data-files-base="/employee/tasks/files/" data-comments-base="/employee/tasks/review-comments/" data-review-base="/employee/tasks/review/" data-can-review="false">
   <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm mb-5">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -32,12 +32,15 @@
           <div class="task-card group cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             data-id="{{ .ID }}"
             data-status="{{ .Status }}"
+            data-timer-state="{{ if eq .Status "todo" }}not_started{{ else if eq .Status "for_review" }}for_review{{ else if eq .Status "done" }}completed{{ else if .IsPaused }}paused{{ else if .StartedAt }}running{{ else }}not_started{{ end }}"
             data-title="{{ .Title }}"
+            data-project="{{ if .Project.Name }}{{ .Project.Name }}{{ end }}"
             data-description="{{ .Description }}"
             data-priority="{{ .Priority }}"
             data-assignee="{{ if .Assignee }}{{ .Assignee.Name }}{{ end }}"
             data-due="{{ if not .DueDate.IsZero }}{{ .DueDate.Format "Jan 02, 2006" }}{{ end }}"
             data-started-at="{{ if .StartedAt }}{{ .StartedAt.Format "2006-01-02T15:04:05Z07:00" }}{{ end }}"
+            data-is-paused="{{ .IsPaused }}"
             data-duration-seconds="{{ .DurationSeconds }}">
 
             {{ if .Priority }}
@@ -52,6 +55,14 @@
               <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
               <span class="text-xs font-medium text-green-600">Low</span>
               {{ end }}
+            </div>
+            {{ end }}
+
+            {{ if .Project.Name }}
+            <div class="mb-2">
+              <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+                {{ .Project.Name }}
+              </span>
             </div>
             {{ end }}
 
@@ -113,6 +124,10 @@
       <p id="modalDescription" class="text-gray-600"></p>
       <div class="grid grid-cols-2 gap-3 text-xs">
         <div>
+          <span class="text-gray-400">Project</span>
+          <p id="modalProject" class="font-medium"></p>
+        </div>
+        <div>
           <span class="text-gray-400">Priority</span>
           <p id="modalPriority" class="font-medium"></p>
         </div>
@@ -127,6 +142,10 @@
         <div>
           <span class="text-gray-400">Time</span>
           <p id="modalTime" class="font-medium">-</p>
+        </div>
+        <div>
+          <span class="text-gray-400">Timer Status</span>
+          <p id="modalTimerStatus" class="font-medium text-gray-700">-</p>
         </div>
       </div>
 
@@ -155,6 +174,12 @@
       </button>
       <button id="taskStartBtn" type="button" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
         Start Task
+      </button>
+      <button id="taskPauseBtn" type="button" class="hidden rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400">
+        Pause Timer
+      </button>
+      <button id="taskResumeBtn" type="button" class="hidden rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500">
+        Resume Timer
       </button>
       <button id="taskUploadBtn" type="button" class="hidden rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
         Upload File

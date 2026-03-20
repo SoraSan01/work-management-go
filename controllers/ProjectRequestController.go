@@ -81,17 +81,33 @@ func (prc *ProjectRequestController) DoneProjects(c *gin.Context) {
 		Name             string
 		Description      string
 		Status           string
+		ApprovalStatus   string
 		DueDate          time.Time
-		FinalQAStatus    string
 		UpdatedAt        time.Time
 	}
 
 	var projects []completedProjectRow
 	err = prc.Repo.DB.
 		Table("projects").
-		Select("projects.id, projects.project_request_id, projects.name, projects.description, projects.status, projects.due_date, projects.final_qa_status, projects.updated_at").
+		Select("projects.id, projects.project_request_id, projects.name, projects.description, projects.status, projects.approval_status, projects.due_date, projects.updated_at").
 		Joins("JOIN project_requests ON project_requests.id = projects.project_request_id").
-		Where("project_requests.customer_id = ? AND projects.status = ?", customerID, "completed").
+		Where(`
+			project_requests.customer_id = ?
+			AND projects.deleted_at IS NULL
+			AND (
+				projects.approval_status = ?
+				OR projects.status = ?
+				OR (
+					EXISTS (SELECT 1 FROM tasks WHERE tasks.project_id = projects.id)
+					AND NOT EXISTS (
+						SELECT 1
+						FROM tasks
+						WHERE tasks.project_id = projects.id
+						  AND tasks.status <> ?
+					)
+				)
+			)
+		`, customerID, "delivered", "completed", "done").
 		Order("projects.updated_at DESC").
 		Scan(&projects).Error
 	if err != nil {

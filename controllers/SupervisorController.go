@@ -42,15 +42,6 @@ func (sc *SupervisorController) Index(c *gin.Context) {
 	projectIDs := make([]uuid.UUID, 0, len(projects))
 	completedProjects := 0
 	pendingFinalQA := 0
-	for _, p := range projects {
-		projectIDs = append(projectIDs, p.ID)
-		if p.Status == "completed" || p.FinalQAStatus == "approved" {
-			completedProjects++
-		}
-		if p.FinalQAStatus == "pending_qa_review" {
-			pendingFinalQA++
-		}
-	}
 
 	var totalTasks int64
 	var doneTasks int64
@@ -78,7 +69,7 @@ func (sc *SupervisorController) Index(c *gin.Context) {
 			Count(&todoTasks).Error
 
 		_ = sc.ProjectRepo.DB.
-			Joins("JOIN projects ON projects.id = tasks.project_id").
+			Joins("JOIN projects ON projects.id = tasks.project_id AND projects.deleted_at IS NULL").
 			Where("projects.id IN ?", projectIDs).
 			Preload("Project").
 			Preload("Assignee").
@@ -156,37 +147,120 @@ func (sc *SupervisorController) Projects(c *gin.Context) {
 		return
 	}
 
-	finalFilesByProject := map[string][]gin.H{}
-	if len(projects) > 0 {
-		projectIDs := make([]uuid.UUID, 0, len(projects))
-		for _, project := range projects {
-			projectIDs = append(projectIDs, project.ID)
-		}
-
-		var finalFiles []models.ProjectFinalFile
-		_ = sc.ProjectRepo.DB.
-			Where("project_id IN ?", projectIDs).
-			Order("created_at DESC").
-			Find(&finalFiles).Error
-
-		for _, file := range finalFiles {
-			key := file.ProjectID.String()
-			downloadURL := "/" + strings.ReplaceAll(file.FilePath, "\\", "/")
-			finalFilesByProject[key] = append(finalFilesByProject[key], gin.H{
-				"id":           file.ID,
-				"file_name":    file.FileName,
-				"download_url": downloadURL,
-				"uploaded_at":  file.CreatedAt,
-			})
+	allowedUsers := make(map[uuid.UUID]models.User)
+	for _, project := range projects {
+		for _, member := range project.Team.Members {
+			if member.ID == supervisorID {
+				continue
+			}
+			allowedUsers[member.ID] = member
 		}
 	}
 
+	users := make([]models.User, 0, len(allowedUsers))
+	for _, user := range allowedUsers {
+		users = append(users, user)
+	}
+
 	c.HTML(http.StatusOK, "supervisor/projects/index.html", utils.TemplateContext(c, gin.H{
-		"PageTitle":           "Team Projects",
-		"ActivePage":          "projects",
-		"projects":            projects,
-		"FinalFilesByProject": finalFilesByProject,
+		"PageTitle":  "Team Projects",
+		"ActivePage": "projects",
+		"projects":   projects,
+		"Users":      users,
 	}))
+}
+
+func (sc *SupervisorController) AssignProjectEmployee(c *gin.Context) {
+	supervisorID, err := uuid.Parse(c.GetString("user_id"))
+	if err != nil {
+		c.String(http.StatusUnauthorized, "Invalid supervisor ID")
+		return
+	}
+
+	projectID := c.Param("id")
+	assignedEmployeeIDStr := strings.TrimSpace(c.PostForm("assigned_employee_id"))
+	priority := normalizePriority(c.PostForm("priority"))
+	if assignedEmployeeIDStr == "" {
+		c.String(http.StatusBadRequest, "Assigned employee is required")
+		return
+	}
+
+	project, err := sc.ProjectRepo.GetByID(projectID)
+	if err != nil || project.ID == uuid.Nil {
+		c.String(http.StatusNotFound, "Project not found")
+		return
+	}
+
+	if project.TeamID == nil {
+		c.String(http.StatusBadRequest, "Project is not assigned to a team")
+		return
+	}
+
+	var teamCount int64
+	if err := sc.ProjectRepo.DB.
+		Table("teams").
+		Where("id = ? AND supervisor_id = ?", *project.TeamID, supervisorID).
+		Count(&teamCount).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to validate project access")
+		return
+	}
+	if teamCount == 0 {
+		c.String(http.StatusForbidden, "You can only assign employees for your own team projects")
+		return
+	}
+
+	assignedEmployeeID, err := uuid.Parse(assignedEmployeeIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid assigned employee ID")
+		return
+	}
+
+	if assignedEmployeeID == project.Team.SupervisorID {
+		c.String(http.StatusBadRequest, "Supervisors cannot assign projects to themselves")
+		return
+	}
+
+	var memberCount int64
+	if err := sc.ProjectRepo.DB.
+		Table("team_members").
+		Where("team_id = ? AND user_id = ?", *project.TeamID, assignedEmployeeID).
+		Count(&memberCount).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to validate assigned employee")
+		return
+	}
+	if memberCount == 0 {
+		c.String(http.StatusBadRequest, "Assigned employee must belong to your team")
+		return
+	}
+
+	if err := sc.ProjectRepo.DB.Model(&models.Project{}).
+		Where("id = ?", project.ID).
+		Updates(map[string]interface{}{
+			"assigned_employee_id": assignedEmployeeID,
+			"priority":             priority,
+			"updated_at":           time.Now(),
+		}).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to assign employee to project")
+		return
+	}
+
+	project.AssignedEmployeeID = &assignedEmployeeID
+	project.Priority = priority
+	_ = sc.ProjectRepo.SyncTaskAssignees(project.ID, assignedEmployeeID)
+	createdKickoffTask, err := sc.ProjectRepo.EnsureKickoffTask(&project)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to prepare employee taskboard")
+		return
+	}
+	_ = sc.ProjectRepo.SyncWorkflowStatus(project.ID)
+
+	notification := "A project was assigned to you: " + project.Name
+	if createdKickoffTask {
+		notification = "A new project is ready for you to start: " + project.Name
+	}
+	_ = sc.NotificationRepo.CreateForUserWithLink(assignedEmployeeID, notification, "/employee/tasks/board")
+
+	c.Redirect(http.StatusSeeOther, "/supervisor/projects")
 }
 
 func (sc *SupervisorController) SubmitProjectForQA(c *gin.Context) {
@@ -226,16 +300,6 @@ func (sc *SupervisorController) SubmitProjectForQA(c *gin.Context) {
 		return
 	}
 
-	var finalFileCount int64
-	if err := sc.ProjectRepo.DB.Model(&models.ProjectFinalFile{}).Where("project_id = ?", project.ID).Count(&finalFileCount).Error; err != nil {
-		c.String(http.StatusInternalServerError, "Failed to verify final project file")
-		return
-	}
-	if finalFileCount == 0 {
-		c.String(http.StatusBadRequest, "Upload at least one final project file before submitting to QA")
-		return
-	}
-
 	var totalTasks int64
 	if err := sc.ProjectRepo.DB.Model(&models.Task{}).Where("project_id = ?", project.ID).Count(&totalTasks).Error; err != nil {
 		c.String(http.StatusInternalServerError, "Failed to count project tasks")
@@ -253,22 +317,13 @@ func (sc *SupervisorController) SubmitProjectForQA(c *gin.Context) {
 		return
 	}
 
-	if project.FinalQAStatus == "pending_qa_review" {
-		c.String(http.StatusBadRequest, "Project is already pending final QA review")
-		return
-	}
-
 	now := time.Now()
 	if err := sc.ProjectRepo.DB.Model(&models.Project{}).
 		Where("id = ?", project.ID).
 		Updates(map[string]interface{}{
-			"final_qa_status":       "pending_qa_review",
-			"final_qa_submitted_at": &now,
-			"final_qa_submitted_by": supervisorID,
-			"final_qa_reviewed_at":  nil,
-			"final_qa_reviewed_by":  nil,
-			"final_qa_comment":      "",
-			"status":                "completed",
+			"approval_status": "pending_final_qa",
+			"status":          "completed",
+			"updated_at":      now,
 		}).Error; err != nil {
 		c.String(http.StatusInternalServerError, "Failed to submit project for QA")
 		return

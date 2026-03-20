@@ -11,74 +11,15 @@
       <button id="export" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm transition hover:bg-gray-50">Export PNG</button>
       <button id="fullscreen" class="ml-auto rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm transition hover:bg-gray-50">Fullscreen</button>
     </div>
-    <div class="chart-container h-[500px] overflow-auto rounded-b-2xl bg-gray-50"></div>
+    <div class="chart-container h-[500px] overflow-auto rounded-b-2xl bg-gray-50"
+         data-chart-api="/supervisor/teams/chart/api/orgchart"></div>
   </div>
 </div>
 
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-org-chart@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-flextree@2.1.2/build/d3-flextree.js"></script>
-<script>
-let chart;
-let zoomLevel = 0.7;
-
-fetch('/supervisor/teams/chart/api/orgchart')
-  .then((res) => res.json())
-  .then((data) => {
-    chart = new d3.OrgChart()
-      .container('.chart-container')
-      .data(data)
-      .nodeWidth(() => 250)
-      .nodeHeight(() => 175)
-      .childrenMargin(() => 40)
-      .compactMarginBetween(() => 15)
-      .compactMarginPair(() => 80)
-      .initialZoom(zoomLevel)
-      .nodeContent((d) => `
-        <div class="h-full w-full p-3">
-          <div class="h-full w-full rounded-2xl border border-gray-200 bg-white shadow-md transition hover:shadow-lg flex flex-col items-center justify-center text-center">
-            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-lg font-semibold text-indigo-600">
-              ${d.data.name?.charAt(0) ?? 'U'}
-            </div>
-            <div class="text-sm font-semibold text-gray-900">${d.data.name}</div>
-            <div class="mt-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600">${d.data.positionName}</div>
-          </div>
-        </div>
-      `)
-      .render();
-  });
-
-const zoom = (delta) => {
-  if (!chart) return;
-  zoomLevel = Math.max(0.2, Math.min(2, zoomLevel + delta));
-  chart.zoom(zoomLevel);
-};
-
-document.getElementById('zoomIn').onclick = () => zoom(0.1);
-document.getElementById('zoomOut').onclick = () => zoom(-0.1);
-document.getElementById('reset').onclick = () => {
-  zoomLevel = 0.7;
-  chart.zoom(zoomLevel).center();
-};
-document.getElementById('fit').onclick = () => chart.fit();
-document.getElementById('export').onclick = () => {
-  chart.exportImg({
-    full: true,
-    scale: 2,
-    onLoad: (base64) => {
-      const a = document.createElement('a');
-      a.href = base64;
-      a.download = 'org-chart.png';
-      a.click();
-    },
-  });
-};
-document.getElementById('fullscreen').onclick = () => {
-  const el = document.querySelector('.chart-container');
-  if (!document.fullscreenElement) el.requestFullscreen();
-  else document.exitFullscreen();
-};
-</script>
+<script src="/static/js/employee/chart.js"></script>
 
 {{ template "supervisor-footer" . }}
 {{ end }}

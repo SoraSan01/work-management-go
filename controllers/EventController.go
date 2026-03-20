@@ -57,7 +57,7 @@ func (ec *EventController) Calendar(c *gin.Context) {
 func (c *EventController) Store(ctx *gin.Context) {
 	userID, err := uuid.Parse(ctx.GetString("user_id"))
 	if err != nil {
-		ctx.String(http.StatusUnauthorized, "Invalid user")
+		respondEventError(ctx, http.StatusUnauthorized, "Invalid user")
 		return
 	}
 
@@ -75,29 +75,36 @@ func (c *EventController) Store(ctx *gin.Context) {
 	}
 
 	if err := c.EventRepo.Create(&event); err != nil {
-		ctx.String(http.StatusInternalServerError, "Failed to create event")
+		respondEventError(ctx, http.StatusInternalServerError, "Failed to create event")
 		return
 	}
 
 	_ = c.NotificationRepo.CreateForUserWithLink(userID, "Event created: "+event.Title, roleBasePath(ctx.GetString("role"))+"/events")
+	if wantsJSON(ctx) {
+		ctx.JSON(http.StatusCreated, gin.H{
+			"message": "Event created successfully",
+			"event":   eventResponse(event),
+		})
+		return
+	}
 	ctx.Redirect(http.StatusSeeOther, roleBasePath(ctx.GetString("role"))+"/events")
 }
 
 func (c *EventController) Update(ctx *gin.Context) {
 	userID, err := uuid.Parse(ctx.GetString("user_id"))
 	if err != nil {
-		ctx.String(http.StatusUnauthorized, "Invalid user")
+		respondEventError(ctx, http.StatusUnauthorized, "Invalid user")
 		return
 	}
 
 	id, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {
-		ctx.String(http.StatusBadRequest, "Invalid event ID")
+		respondEventError(ctx, http.StatusBadRequest, "Invalid event ID")
 		return
 	}
 	event, err := c.EventRepo.GetByIDForUser(id, userID)
 	if err != nil {
-		ctx.String(http.StatusNotFound, "Event not found")
+		respondEventError(ctx, http.StatusNotFound, "Event not found")
 		return
 	}
 
@@ -111,38 +118,52 @@ func (c *EventController) Update(ctx *gin.Context) {
 	event.EndTime = end
 
 	if err := c.EventRepo.Update(event); err != nil {
-		ctx.String(http.StatusInternalServerError, "Failed to update event")
+		respondEventError(ctx, http.StatusInternalServerError, "Failed to update event")
 		return
 	}
 
 	_ = c.NotificationRepo.CreateForUserWithLink(userID, "Event updated: "+event.Title, roleBasePath(ctx.GetString("role"))+"/events")
+	if wantsJSON(ctx) {
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "Event updated successfully",
+			"event":   eventResponse(*event),
+		})
+		return
+	}
 	ctx.Redirect(http.StatusSeeOther, roleBasePath(ctx.GetString("role"))+"/events")
 }
 
 func (c *EventController) Delete(ctx *gin.Context) {
 	userID, err := uuid.Parse(ctx.GetString("user_id"))
 	if err != nil {
-		ctx.String(http.StatusUnauthorized, "Invalid user")
+		respondEventError(ctx, http.StatusUnauthorized, "Invalid user")
 		return
 	}
 
 	id, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {
-		ctx.String(http.StatusBadRequest, "Invalid event ID")
+		respondEventError(ctx, http.StatusBadRequest, "Invalid event ID")
 		return
 	}
 	event, err := c.EventRepo.GetByIDForUser(id, userID)
 	if err != nil {
-		ctx.String(http.StatusNotFound, "Event not found")
+		respondEventError(ctx, http.StatusNotFound, "Event not found")
 		return
 	}
 
 	if err := c.EventRepo.Delete(id); err != nil {
-		ctx.String(http.StatusInternalServerError, "Failed to delete event")
+		respondEventError(ctx, http.StatusInternalServerError, "Failed to delete event")
 		return
 	}
 
 	_ = c.NotificationRepo.CreateForUserWithLink(userID, "Event deleted: "+event.Title, roleBasePath(ctx.GetString("role"))+"/events")
+	if wantsJSON(ctx) {
+		ctx.JSON(http.StatusOK, gin.H{
+			"message": "Event deleted successfully",
+			"id":      id,
+		})
+		return
+	}
 	ctx.Redirect(http.StatusSeeOther, roleBasePath(ctx.GetString("role"))+"/events")
 }
 
@@ -163,13 +184,7 @@ func (c *EventController) GetEventsJSON(ctx *gin.Context) {
 
 	var response []map[string]interface{}
 	for _, e := range events {
-		response = append(response, map[string]interface{}{
-			"id":          e.ID,
-			"title":       e.Title,
-			"start":       e.StartTime.Format(time.RFC3339),
-			"end":         e.EndTime.Format(time.RFC3339),
-			"description": e.Description,
-		})
+		response = append(response, eventResponse(e))
 	}
 
 	ctx.JSON(http.StatusOK, response)
@@ -198,24 +213,47 @@ func parseEventForm(ctx *gin.Context) (string, time.Time, time.Time, string, boo
 	title := strings.TrimSpace(ctx.PostForm("title"))
 	description := strings.TrimSpace(ctx.PostForm("description"))
 	if title == "" {
-		ctx.String(http.StatusBadRequest, "Title is required")
+		respondEventError(ctx, http.StatusBadRequest, "Title is required")
 		return "", time.Time{}, time.Time{}, "", false
 	}
 
-	start, err := time.Parse("2006-01-02T15:04", strings.TrimSpace(ctx.PostForm("start_time")))
+	start, err := time.ParseInLocation("2006-01-02T15:04", strings.TrimSpace(ctx.PostForm("start_time")), time.Local)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, "Invalid start time")
+		respondEventError(ctx, http.StatusBadRequest, "Invalid start time")
 		return "", time.Time{}, time.Time{}, "", false
 	}
-	end, err := time.Parse("2006-01-02T15:04", strings.TrimSpace(ctx.PostForm("end_time")))
+	end, err := time.ParseInLocation("2006-01-02T15:04", strings.TrimSpace(ctx.PostForm("end_time")), time.Local)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, "Invalid end time")
+		respondEventError(ctx, http.StatusBadRequest, "Invalid end time")
 		return "", time.Time{}, time.Time{}, "", false
 	}
 	if !end.After(start) {
-		ctx.String(http.StatusBadRequest, "End time must be after start time")
+		respondEventError(ctx, http.StatusBadRequest, "End time must be after start time")
 		return "", time.Time{}, time.Time{}, "", false
 	}
 
 	return title, start, end, description, true
+}
+
+func wantsJSON(ctx *gin.Context) bool {
+	return strings.EqualFold(strings.TrimSpace(ctx.GetHeader("X-Requested-With")), "XMLHttpRequest") ||
+		strings.Contains(strings.ToLower(ctx.GetHeader("Accept")), "application/json")
+}
+
+func respondEventError(ctx *gin.Context, status int, message string) {
+	if wantsJSON(ctx) {
+		ctx.JSON(status, gin.H{"error": message})
+		return
+	}
+	ctx.String(status, message)
+}
+
+func eventResponse(event models.CalendarEvent) map[string]interface{} {
+	return map[string]interface{}{
+		"id":          event.ID,
+		"title":       event.Title,
+		"start":       event.StartTime.Format(time.RFC3339),
+		"end":         event.EndTime.Format(time.RFC3339),
+		"description": event.Description,
+	}
 }

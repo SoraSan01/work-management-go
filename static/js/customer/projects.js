@@ -22,7 +22,7 @@
     if (!filteredRows.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="4" class="px-4 py-10 text-center text-sm text-gray-500">
+          <td colspan="3" class="px-4 py-10 text-center text-sm text-gray-500">
             No projects match your search.
           </td>
         </tr>

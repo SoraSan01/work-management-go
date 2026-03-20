@@ -25,6 +25,9 @@ func (r *FileRepository) Create(file *models.File) error {
 
 func (r *FileRepository) GetByTask(taskID uuid.UUID) ([]models.File, error) {
 	var files []models.File
-	err := r.DB.Where("task_id = ?", taskID).Find(&files).Error
+	err := r.DB.
+		Where("task_id = ?", taskID).
+		Order("version DESC, created_at DESC").
+		Find(&files).Error
 	return files, err
 }

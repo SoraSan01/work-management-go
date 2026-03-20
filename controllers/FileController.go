@@ -95,8 +95,27 @@ func (fc *FileController) Upload(c *gin.Context) {
 		UploadedBy: uploaderID,
 		FilePath:   path,
 		FileType:   fileType,
+		Version:    1,
+		IsLatest:   true,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
+	}
+
+	var latestVersion int64
+	if err := fc.Repo.DB.Model(&models.File{}).
+		Where("task_id = ?", taskID).
+		Select("COALESCE(MAX(version), 0)").
+		Scan(&latestVersion).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to prepare file version"})
+		return
+	}
+	record.Version = int(latestVersion) + 1
+
+	if err := fc.Repo.DB.Model(&models.File{}).
+		Where("task_id = ?", taskID).
+		Update("is_latest", false).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update previous versions"})
+		return
 	}
 
 	if err := fc.Repo.Create(&record); err != nil {
@@ -151,7 +170,7 @@ func (fc *FileController) ListByTask(c *gin.Context) {
 		return
 	}
 
-	if role != "admin" && role != "supervisor" && role != "qualityassurance" && task.AssignedTo != requesterID {
+	if role != "admin" && role != "supervisor" && role != "qualityassurance" && role != "manager" && task.AssignedTo != requesterID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "you cannot view files for this task"})
 		return
 	}
@@ -169,6 +188,8 @@ func (fc *FileController) ListByTask(c *gin.Context) {
 			"file_path":    file.FilePath,
 			"download_url": buildPublicFileURL(file.FilePath),
 			"file_name":    extractDisplayFileName(file.FilePath),
+			"version":      file.Version,
+			"is_latest":    file.IsLatest,
 			"uploaded_at":  file.CreatedAt,
 		})
 	}
@@ -192,23 +213,45 @@ func (fc *FileController) ListCustomerRequestFiles(c *gin.Context) {
 		return
 	}
 
-	var files []models.File
+	type deliveredTaskFile struct {
+		ID        uuid.UUID
+		FilePath  string
+		CreatedAt time.Time
+	}
+
+	var taskFiles []deliveredTaskFile
 	err = fc.Repo.DB.
 		Table("files").
-		Select("files.*").
-		Joins("JOIN tasks ON tasks.id = files.task_id").
-		Joins("JOIN projects ON projects.id = tasks.project_id").
+		Select("files.id, files.file_path, files.created_at").
+		Joins("JOIN projects ON projects.id = files.project_id AND projects.deleted_at IS NULL").
 		Joins("JOIN project_requests ON project_requests.id = projects.project_request_id").
-		Where("projects.project_request_id = ? AND project_requests.customer_id = ? AND tasks.status = ?", requestID, customerID, "done").
+		Where(`
+			projects.project_request_id = ?
+			AND project_requests.customer_id = ?
+			AND files.is_latest = ?
+			AND (
+				projects.approval_status = ?
+				OR projects.status = ?
+				OR (
+					EXISTS (SELECT 1 FROM tasks WHERE tasks.project_id = projects.id)
+					AND NOT EXISTS (
+						SELECT 1
+						FROM tasks
+						WHERE tasks.project_id = projects.id
+						  AND tasks.status <> ?
+					)
+				)
+			)
+		`, requestID, customerID, true, "delivered", "completed", "done").
 		Order("files.created_at DESC").
-		Scan(&files).Error
+		Scan(&taskFiles).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load project files"})
 		return
 	}
 
-	out := make([]gin.H, 0, len(files))
-	for _, file := range files {
+	out := make([]gin.H, 0, len(taskFiles))
+	for _, file := range taskFiles {
 		out = append(out, gin.H{
 			"id":           file.ID,
 			"file_path":    file.FilePath,
@@ -222,87 +265,6 @@ func (fc *FileController) ListCustomerRequestFiles(c *gin.Context) {
 		"success": true,
 		"files":   out,
 	})
-}
-
-func (fc *FileController) UploadProjectFinal(c *gin.Context) {
-	projectID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
-	supervisorID, err := uuid.Parse(c.GetString("user_id"))
-	if err != nil {
-		c.String(http.StatusUnauthorized, "Invalid supervisor")
-		return
-	}
-
-	project, err := fc.ProjectRepo.GetByID(projectID.String())
-	if err != nil || project.ID == uuid.Nil {
-		c.String(http.StatusNotFound, "Project not found")
-		return
-	}
-	if project.TeamID == nil {
-		c.String(http.StatusForbidden, "Project is not assigned to a team")
-		return
-	}
-
-	var canAccess int64
-	if err := fc.ProjectRepo.DB.
-		Table("teams").
-		Where("id = ? AND supervisor_id = ?", *project.TeamID, supervisorID).
-		Count(&canAccess).Error; err != nil {
-		c.String(http.StatusInternalServerError, "Failed to validate project access")
-		return
-	}
-	if canAccess == 0 {
-		c.String(http.StatusForbidden, "You can only upload final files for your own team projects")
-		return
-	}
-
-	file, err := c.FormFile("file")
-	if err != nil {
-		c.String(http.StatusBadRequest, "Final file is required")
-		return
-	}
-	if file.Size > 50<<20 {
-		c.String(http.StatusBadRequest, "File too large (max 50MB)")
-		return
-	}
-
-	uploadDir := filepath.Join("uploads", "projects", projectID.String(), "final")
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		c.String(http.StatusInternalServerError, "Failed to create upload folder")
-		return
-	}
-
-	filename := uuid.New().String() + "_" + filepath.Base(file.Filename)
-	path := filepath.Join(uploadDir, filename)
-	if err := c.SaveUploadedFile(file, path); err != nil {
-		c.String(http.StatusInternalServerError, "Failed to save file")
-		return
-	}
-
-	record := models.ProjectFinalFile{
-		ProjectID:  projectID,
-		UploadedBy: supervisorID,
-		FilePath:   path,
-		FileName:   file.Filename,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	}
-	if err := fc.Repo.DB.Create(&record).Error; err != nil {
-		c.String(http.StatusInternalServerError, "Failed to save file record")
-		return
-	}
-
-	if project.ApproverID != nil {
-		_ = fc.ProjectRepo.DB.Model(&models.Project{}).
-			Where("id = ?", projectID).
-			Update("updated_at", time.Now()).Error
-	}
-
-	c.Redirect(http.StatusSeeOther, "/supervisor/projects")
 }
 
 func extractDisplayFileName(filePath string) string {

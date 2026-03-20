@@ -52,12 +52,18 @@
                 <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
               </button>
             </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="nationality">
+                <span>Nationality</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
             <th class="px-4 py-3 text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           {{ range .Employees }}
-          <tr data-name="{{ .FirstName }} {{ .LastName }}" data-role="{{ if .Role }}{{ .Role.Name }}{{ end }}">
+          <tr data-name="{{ .FirstName }} {{ .LastName }}" data-role="{{ if .Role }}{{ .Role.Name }}{{ end }}" data-nationality="{{ .Nationality }}">
             <td class="px-4 py-3">
               <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
@@ -80,28 +86,43 @@
               </span>
               {{ end }}
             </td>
+            <td class="px-4 py-3">
+              {{ if .Nationality }}
+              <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                {{ .Nationality }}
+              </span>
+              {{ else }}
+              <span class="text-xs text-gray-400">Not set</span>
+              {{ end }}
+            </td>
             <td class="px-4 py-3 text-right">
               <div class="inline-flex items-center gap-2">
                 <button type="button"
                    class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
                    title="Edit employee"
                    data-edit-employee
-                   data-edit-url="/admin/employees/edit/{{ .ID }}"
+                   data-edit-url="/admin/employees/update/{{ .ID }}"
                    data-first-name="{{ .FirstName }}"
                    data-last-name="{{ .LastName }}"
                    data-email="{{ .Email }}"
+                   data-nationality="{{ .Nationality }}"
                    data-role-id="{{ .RoleID }}"
-                   data-department-id="{{ if .DepartmentID }}{{ .DepartmentID }}{{ end }}">
+                   data-department-id="{{ if .DepartmentID }}{{ .DepartmentID }}{{ end }}"
+                   data-manager-id="{{ if .ManagerID }}{{ .ManagerID }}{{ end }}">
                   <i class="fas fa-pen"></i>
                   <span>Edit</span>
                 </button>
-                <a href="/admin/employees/delete/{{ .ID }}"
-                   class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50"
-                   onclick="return confirm('Are you sure you want to delete {{ .FirstName }} {{ .LastName }}?')"
-                   title="Delete employee">
-                  <i class="fas fa-trash"></i>
-                  <span>Delete</span>
-                </a>
+                <form method="POST"
+                      action="/admin/employees/delete/{{ .ID }}"
+                      class="inline-flex"
+                      onsubmit="return confirm('Are you sure you want to delete {{ .FirstName }} {{ .LastName }}?')">
+                  <button type="submit"
+                          class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                          title="Delete employee">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete</span>
+                  </button>
+                </form>
               </div>
             </td>
           </tr>
@@ -168,6 +189,25 @@
           <label class="text-sm font-medium text-gray-700">Email</label>
           <input type="email" name="email" id="employeeEmail" required
                  class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="text-sm font-medium text-gray-700">Nationality</label>
+            <input type="text" name="nationality" id="employeeNationality"
+                   placeholder="e.g. Filipino, Japanese, Canadian"
+                   class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700">Reports To</label>
+            <select name="manager_id" id="employeeManagerId"
+                    class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+              <option value="">No manager assigned</option>
+              {{ range .Managers }}
+              <option value="{{ .ID }}">{{ .FirstName }} {{ .LastName }}</option>
+              {{ end }}
+            </select>
+          </div>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">

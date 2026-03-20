@@ -18,6 +18,7 @@ type Task struct {
 	Status          string     `gorm:"default:'todo'" json:"status"`  // todo, in_progress, for_review, done
 	Priority        string     `gorm:"default:'low'" json:"priority"` // new field: low, medium, high
 	StartedAt       *time.Time `json:"started_at"`
+	IsPaused        bool       `gorm:"default:false" json:"is_paused"`
 	DurationSeconds int64      `gorm:"default:0" json:"duration_seconds"`
 	DueDate         time.Time  `json:"due_date"`
 	CreatedAt       time.Time  `json:"created_at"`

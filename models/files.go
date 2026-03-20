@@ -20,6 +20,8 @@ type File struct {
 
 	FilePath string `gorm:"not null" json:"file_path"`
 	FileType string `json:"file_type"`
+	Version  int    `gorm:"default:1" json:"version"`
+	IsLatest bool   `gorm:"default:true" json:"is_latest"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

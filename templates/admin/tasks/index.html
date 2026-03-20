@@ -203,22 +203,24 @@
               <option value="">Select Project</option>
               {{ range .Projects }}
               <option value="{{ .ID }}"
-                      data-member-ids="{{ if .Team }}{{ range $index, $member := .Team.Members }}{{ if $index }},{{ end }}{{ $member.ID }}{{ end }}{{ end }}">
+                      data-member-ids="{{ if .Team }}{{ range $index, $member := .Team.Members }}{{ if $index }},{{ end }}{{ $member.ID }}{{ end }}{{ end }}"
+                      data-assigned-employee-id="{{ if .AssignedEmployeeID }}{{ .AssignedEmployeeID }}{{ end }}"
+                      data-assigned-employee-name="{{ if .AssignedEmployee }}{{ .AssignedEmployee.Name }}{{ end }}">
                 {{ .Name }}
               </option>
               {{ end }}
             </select>
           </div>
           <div>
-            <label class="text-sm font-medium text-gray-700">Assignee</label>
-            <select name="assigned_to" id="taskAssigneeId" required
+            <label class="text-sm font-medium text-gray-700">Project Employee</label>
+            <select id="taskAssigneeId" disabled
               class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-              <option value="">Select Assignee</option>
+              <option value="">Select Project First</option>
               {{ range .Users }}
               <option value="{{ .ID }}">{{ .FirstName }} {{ .LastName }}</option>
               {{ end }}
             </select>
-            <p class="mt-2 text-xs text-gray-500" id="taskAssigneeHelp">Select a project to filter assignees by team.</p>
+            <p class="mt-2 text-xs text-gray-500" id="taskAssigneeHelp">Tasks inherit the single employee assigned to the project.</p>
           </div>
         </div>
 

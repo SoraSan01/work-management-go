@@ -91,11 +91,11 @@ func (tc *TaskController) Index(c *gin.Context) {
 	projects, _ := tc.ProjectRepo.GetAll()
 	users, _ := tc.UserRepo.GetAll()
 	c.HTML(http.StatusOK, "admin/tasks/index.html", utils.TemplateContext(c, gin.H{
-		"PageTitle": "Tasks",
+		"PageTitle":  "Tasks",
 		"ActivePage": "tasks",
-		"Tasks":    tasks,
-		"Projects": projects,
-		"Users":    users,
+		"Tasks":      tasks,
+		"Projects":   projects,
+		"Users":      users,
 	}))
 }
 
@@ -114,10 +114,10 @@ func (tc *TaskController) Create(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin/tasks/create.html", utils.TemplateContext(c, gin.H{
-		"PageTitle": "Create Task",
+		"PageTitle":  "Create Task",
 		"ActivePage": "tasks",
-		"Projects": projects,
-		"Users":    users,
+		"Projects":   projects,
+		"Users":      users,
 	}))
 }
 
@@ -125,7 +125,6 @@ func (tc *TaskController) Create(c *gin.Context) {
 func (tc *TaskController) Store(c *gin.Context) {
 	var input struct {
 		ProjectID   string `form:"project_id" binding:"required"`
-		AssignedTo  string `form:"assigned_to" binding:"required"`
 		Title       string `form:"title" binding:"required"`
 		Description string `form:"description"`
 		DueDate     string `form:"due_date" binding:"required"`
@@ -142,17 +141,27 @@ func (tc *TaskController) Store(c *gin.Context) {
 		return
 	}
 
-	assignedTo, err := uuid.Parse(input.AssignedTo)
-	if err != nil {
-		c.String(http.StatusBadRequest, "Invalid assignee ID")
-		return
-	}
-
 	dueDate, err := time.Parse("2006-01-02", input.DueDate)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid due date")
 		return
 	}
+
+	project, err := tc.ProjectRepo.GetByID(input.ProjectID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to load project")
+		return
+	}
+	if project.ID == uuid.Nil {
+		c.String(http.StatusNotFound, "Project not found")
+		return
+	}
+	if project.AssignedEmployeeID == nil {
+		c.String(http.StatusBadRequest, "Assign an employee to the project before creating tasks")
+		return
+	}
+
+	assignedTo := *project.AssignedEmployeeID
 
 	role := c.GetString("role")
 	if role == "supervisor" {
@@ -162,11 +171,6 @@ func (tc *TaskController) Store(c *gin.Context) {
 			return
 		}
 
-		project, err := tc.ProjectRepo.GetByID(input.ProjectID)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Failed to load project")
-			return
-		}
 		if project.ID == uuid.Nil || project.TeamID == nil {
 			c.String(http.StatusForbidden, "You can only assign tasks to projects assigned to your team")
 			return
@@ -190,7 +194,7 @@ func (tc *TaskController) Store(c *gin.Context) {
 			return
 		}
 
-		if project.Status == "completed" || project.Status == "cancelled" || project.FinalQAStatus == "approved" || project.FinalQAStatus == "pending_qa_review" {
+		if project.Status == "completed" || project.Status == "cancelled" {
 			c.String(http.StatusBadRequest, "Cannot create new tasks for a completed or final-QA submitted project")
 			return
 		}
@@ -204,7 +208,7 @@ func (tc *TaskController) Store(c *gin.Context) {
 			return
 		}
 		if memberCount == 0 {
-			c.String(http.StatusForbidden, "You can only assign tasks to your own team members")
+			c.String(http.StatusForbidden, "The project's assigned employee must belong to your team")
 			return
 		}
 	}
@@ -266,9 +270,9 @@ func (tc *TaskController) Edit(c *gin.Context) {
 		return
 	}
 	c.HTML(http.StatusOK, "admin/tasks/edit.html", utils.TemplateContext(c, gin.H{
-		"PageTitle": "Edit Task",
+		"PageTitle":  "Edit Task",
 		"ActivePage": "tasks",
-		"Task":      task,
+		"Task":       task,
 	}))
 }
 
@@ -344,28 +348,29 @@ func (tc *TaskController) Board(c *gin.Context) {
 	var err error
 
 	if role == "admin" || role == "supervisor" || role == "qualityassurance" || role == "manager" {
-		if role == "supervisor" {
+		switch role {
+		case "supervisor":
 			supervisorID, parseErr := uuid.Parse(userIDStr)
 			if parseErr != nil {
 				c.String(http.StatusUnauthorized, "Invalid supervisor ID")
 				return
 			}
 			tasks, err = tc.Repo.GetBySupervisorID(supervisorID)
-		} else if role == "qualityassurance" {
+		case "qualityassurance":
 			qaID, parseErr := uuid.Parse(userIDStr)
 			if parseErr != nil {
 				c.String(http.StatusUnauthorized, "Invalid quality assurance ID")
 				return
 			}
 			tasks, err = tc.Repo.GetByQATeamMemberID(qaID)
-		} else if role == "manager" {
+		case "manager":
 			managerID, parseErr := uuid.Parse(userIDStr)
 			if parseErr != nil {
 				c.String(http.StatusUnauthorized, "Invalid manager ID")
 				return
 			}
 			tasks, err = tc.Repo.GetByManagerID(managerID)
-		} else {
+		default:
 			tasks, err = tc.Repo.GetAll()
 		}
 	} else {
@@ -447,6 +452,23 @@ func (tc *TaskController) StartTask(c *gin.Context) {
 	}
 
 	role := c.GetString("role")
+	userID, userErr := uuid.Parse(c.GetString("user_id"))
+	if userErr != nil {
+		c.String(http.StatusUnauthorized, "Invalid user")
+		return
+	}
+
+	task, err := tc.Repo.GetByID(taskID)
+	if err != nil {
+		c.String(http.StatusNotFound, "Task not found")
+		return
+	}
+
+	if role == "employee" && task.AssignedTo != userID {
+		c.String(http.StatusForbidden, "You can only start your own task")
+		return
+	}
+
 	if role == "supervisor" {
 		supervisorID, parseErr := uuid.Parse(c.GetString("user_id"))
 		if parseErr != nil {
@@ -457,7 +479,7 @@ func (tc *TaskController) StartTask(c *gin.Context) {
 		var canAccess int64
 		if err := tc.Repo.DB.
 			Table("tasks").
-			Joins("JOIN projects ON projects.id = tasks.project_id").
+			Joins("JOIN projects ON projects.id = tasks.project_id AND projects.deleted_at IS NULL").
 			Joins("JOIN teams ON teams.id = projects.team_id").
 			Where("tasks.id = ? AND teams.supervisor_id = ?", taskID, supervisorID).
 			Count(&canAccess).Error; err != nil {
@@ -471,7 +493,7 @@ func (tc *TaskController) StartTask(c *gin.Context) {
 	}
 
 	if err := tc.Repo.StartTask(taskID); err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -495,4 +517,80 @@ func (tc *TaskController) StartTask(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusSeeOther, templatePath)
+}
+
+func (tc *TaskController) PauseTask(c *gin.Context) {
+	taskID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.String(http.StatusBadRequest, "invalid task id")
+		return
+	}
+
+	task, err := tc.Repo.GetByID(taskID)
+	if err != nil {
+		c.String(http.StatusNotFound, "Task not found")
+		return
+	}
+
+	userID, err := uuid.Parse(c.GetString("user_id"))
+	if err != nil {
+		c.String(http.StatusUnauthorized, "Invalid user")
+		return
+	}
+	role := c.GetString("role")
+	if role != "admin" && task.AssignedTo != userID {
+		c.String(http.StatusForbidden, "You can only pause your own task")
+		return
+	}
+	if task.StartedAt == nil {
+		c.String(http.StatusBadRequest, "Task is not currently running")
+		return
+	}
+
+	elapsed := int64(time.Since(*task.StartedAt).Seconds())
+	if elapsed > 0 {
+		if err := tc.Repo.AddElapsedDuration(taskID, elapsed); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to pause task")
+			return
+		}
+	}
+
+	if err := tc.Repo.PauseTask(taskID); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+func (tc *TaskController) ResumeTask(c *gin.Context) {
+	taskID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.String(http.StatusBadRequest, "invalid task id")
+		return
+	}
+
+	task, err := tc.Repo.GetByID(taskID)
+	if err != nil {
+		c.String(http.StatusNotFound, "Task not found")
+		return
+	}
+
+	userID, err := uuid.Parse(c.GetString("user_id"))
+	if err != nil {
+		c.String(http.StatusUnauthorized, "Invalid user")
+		return
+	}
+	role := c.GetString("role")
+	if role != "admin" && task.AssignedTo != userID {
+		c.String(http.StatusForbidden, "You can only resume your own task")
+		return
+	}
+
+	if err := tc.Repo.ResumeTask(taskID); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.Status(http.StatusOK)
 }

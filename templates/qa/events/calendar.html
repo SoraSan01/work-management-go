@@ -3,7 +3,7 @@
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/main.min.css" rel="stylesheet" />
 
-<div class="space-y-6">
+<div id="eventCalendarPage" class="space-y-6" data-events-base="/qa/events">
   <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold text-gray-900">Event Calendar</h1>
@@ -48,6 +48,7 @@
       </div>
 
       <form method="POST" action="/qa/events/store" id="eventModalForm" class="space-y-5 px-6 py-5">
+        <div id="eventModalError" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></div>
         <div>
           <label for="eventTitle" class="text-sm font-medium text-gray-700">Title</label>
           <input type="text" name="title" id="eventTitle" required
@@ -94,7 +95,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script>
-<script src="/static/js/qa/event.js"></script>
+<script src="/static/js/shared/event-calendar.js"></script>
 
 {{ template "qa-footer" . }}
 {{ end }}

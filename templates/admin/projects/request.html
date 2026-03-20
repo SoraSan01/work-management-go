@@ -155,7 +155,7 @@
       <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
         <div>
           <h2 class="text-lg font-semibold text-gray-900">Approve Request</h2>
-          <p class="text-sm text-gray-500">Choose a team to manage this project.</p>
+          <p class="text-sm text-gray-500">Assign the manager and team. The rest of the workflow continues with manager and supervisor actions.</p>
         </div>
         <button type="button"
                 id="closeApproveModal"
@@ -167,12 +167,25 @@
 
       <form id="approveForm" method="POST" class="space-y-5 px-6 py-5">
         <div>
+          <label class="text-sm font-medium text-gray-700">Manager</label>
+          <select name="manager_id" id="approveManagerId" required
+            class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">Select Manager</option>
+            {{ range .managers }}
+            <option value="{{ .ID }}">{{ .Name }}</option>
+            {{ end }}
+          </select>
+        </div>
+
+        <div>
           <label class="text-sm font-medium text-gray-700">Team</label>
-          <select name="team_id" required
+          <select name="team_id" id="approveTeamId" required
             class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
             <option value="">Select Team</option>
             {{ range .teams }}
-            <option value="{{ .ID }}">{{ .Name }}</option>
+            <option value="{{ .ID }}">
+              {{ .Name }}
+            </option>
             {{ end }}
           </select>
         </div>

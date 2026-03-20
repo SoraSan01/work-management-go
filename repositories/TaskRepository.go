@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"errors"
 	"time"
 	"work-management-system/models"
 
@@ -54,15 +55,22 @@ func (r *TaskRepository) Delete(id uuid.UUID) error {
 
 func (r *TaskRepository) StartTask(taskID uuid.UUID) error {
 	now := time.Now()
-	return r.DB.
+	result := r.DB.
 		Model(&models.Task{}).
 		Where("id = ? AND status = ?", taskID, "todo").
 		Updates(map[string]interface{}{
 			"status":     "in_progress",
 			"started_at": now,
+			"is_paused":  false,
 			"updated_at": now,
-		}).
-		Error
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("task can only be started from the to do state")
+	}
+	return nil
 }
 
 func (r *TaskRepository) GetByAssignee(userID uuid.UUID) ([]models.Task, error) {
@@ -85,9 +93,48 @@ func (r *TaskRepository) MarkForReviewAfterUpload(taskID uuid.UUID) error {
 		Updates(map[string]interface{}{
 			"status":     "for_review",
 			"started_at": nil,
+			"is_paused":  false,
 			"updated_at": now,
 		}).
 		Error
+}
+
+func (r *TaskRepository) PauseTask(taskID uuid.UUID) error {
+	now := time.Now()
+	result := r.DB.
+		Model(&models.Task{}).
+		Where("id = ? AND status = ? AND started_at IS NOT NULL", taskID, "in_progress").
+		Updates(map[string]interface{}{
+			"started_at": nil,
+			"is_paused":  true,
+			"updated_at": now,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("task is not currently running")
+	}
+	return nil
+}
+
+func (r *TaskRepository) ResumeTask(taskID uuid.UUID) error {
+	now := time.Now()
+	result := r.DB.
+		Model(&models.Task{}).
+		Where("id = ? AND status = ? AND is_paused = ?", taskID, "in_progress", true).
+		Updates(map[string]interface{}{
+			"started_at": now,
+			"is_paused":  false,
+			"updated_at": now,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("task is not currently paused")
+	}
+	return nil
 }
 
 func (r *TaskRepository) AddElapsedDuration(taskID uuid.UUID, seconds int64) error {
@@ -103,7 +150,7 @@ func (r *TaskRepository) AddElapsedDuration(taskID uuid.UUID, seconds int64) err
 func (r *TaskRepository) GetBySupervisorID(supervisorID uuid.UUID) ([]models.Task, error) {
 	var tasks []models.Task
 	err := r.DB.
-		Joins("JOIN projects ON projects.id = tasks.project_id").
+		Joins("JOIN projects ON projects.id = tasks.project_id AND projects.deleted_at IS NULL").
 		Joins("JOIN teams ON teams.id = projects.team_id").
 		Where("teams.supervisor_id = ?", supervisorID).
 		Preload("Project").
@@ -115,7 +162,7 @@ func (r *TaskRepository) GetBySupervisorID(supervisorID uuid.UUID) ([]models.Tas
 func (r *TaskRepository) GetByQATeamMemberID(qaID uuid.UUID) ([]models.Task, error) {
 	var tasks []models.Task
 	err := r.DB.
-		Joins("JOIN projects ON projects.id = tasks.project_id").
+		Joins("JOIN projects ON projects.id = tasks.project_id AND projects.deleted_at IS NULL").
 		Joins("JOIN team_members ON team_members.team_id = projects.team_id").
 		Where("team_members.user_id = ?", qaID).
 		Preload("Project").
@@ -128,7 +175,7 @@ func (r *TaskRepository) CanQAReviewTask(taskID uuid.UUID, qaID uuid.UUID) (bool
 	var count int64
 	err := r.DB.
 		Table("tasks").
-		Joins("JOIN projects ON projects.id = tasks.project_id").
+		Joins("JOIN projects ON projects.id = tasks.project_id AND projects.deleted_at IS NULL").
 		Joins("JOIN team_members ON team_members.team_id = projects.team_id").
 		Where("tasks.id = ? AND team_members.user_id = ?", taskID, qaID).
 		Count(&count).Error
@@ -141,7 +188,7 @@ func (r *TaskRepository) CanQAReviewTask(taskID uuid.UUID, qaID uuid.UUID) (bool
 func (r *TaskRepository) GetByManagerID(managerID uuid.UUID) ([]models.Task, error) {
 	var tasks []models.Task
 	err := r.DB.
-		Joins("JOIN projects ON projects.id = tasks.project_id").
+		Joins("JOIN projects ON projects.id = tasks.project_id AND projects.deleted_at IS NULL").
 		Where("projects.manager_id = ?", managerID).
 		Preload("Project").
 		Preload("Assignee").
@@ -153,7 +200,7 @@ func (r *TaskRepository) CanManagerReviewTask(taskID uuid.UUID, managerID uuid.U
 	var count int64
 	err := r.DB.
 		Table("tasks").
-		Joins("JOIN projects ON projects.id = tasks.project_id").
+		Joins("JOIN projects ON projects.id = tasks.project_id AND projects.deleted_at IS NULL").
 		Where("tasks.id = ? AND projects.manager_id = ?", taskID, managerID).
 		Count(&count).Error
 	if err != nil {

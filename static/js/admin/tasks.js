@@ -272,28 +272,31 @@
   const filterAssignees = () => {
     if (!selectProject || !selectAssignee) return;
     const selectedOption = selectProject.options[selectProject.selectedIndex];
-    const memberIds = (selectedOption?.dataset.memberIds || '')
-      .split(',')
-      .map(id => id.trim())
-      .filter(Boolean);
-
-    const hasFilter = memberIds.length > 0;
+    const assignedEmployeeId = selectedOption?.dataset.assignedEmployeeId || '';
+    const hasAssignment = assignedEmployeeId.length > 0;
     Array.from(selectAssignee.options).forEach(option => {
       if (!option.value) {
         option.hidden = false;
         option.disabled = false;
         return;
       }
-      const allowed = !hasFilter || memberIds.includes(option.value);
+      const allowed = hasAssignment && option.value === assignedEmployeeId;
       option.hidden = !allowed;
       option.disabled = !allowed;
       if (!allowed && option.selected) option.selected = false;
     });
 
+    selectAssignee.disabled = !hasAssignment;
+    if (hasAssignment) {
+      selectAssignee.value = assignedEmployeeId;
+    } else {
+      selectAssignee.value = '';
+    }
+
     if (assigneeHelp) {
-      assigneeHelp.textContent = hasFilter
-        ? 'Only members of the project team can be assigned.'
-        : 'This project has no team assigned.';
+      assigneeHelp.textContent = hasAssignment
+        ? 'This task will be assigned to the employee who owns the project.'
+        : 'Assign an employee to the project first before creating tasks.';
     }
   };
 

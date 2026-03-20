@@ -7,6 +7,12 @@
       <h1 class="text-2xl font-semibold text-gray-900">Team Projects</h1>
       <p class="text-sm text-gray-500">Projects assigned to teams under your supervision.</p>
     </div>
+    <button type="button"
+      id="openAssignProjectModal"
+      class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+      <i class="fas fa-user-plus"></i>
+      <span>Assign Project</span>
+    </button>
   </div>
 
   <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -51,29 +57,38 @@
               </button>
             </th>
             <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="employee">
+                <span>Employee</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
+              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="priority">
+                <span>Priority</span>
+                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
+              </button>
+            </th>
+            <th class="px-4 py-3">
               <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="approver">
                 <span>Approver</span>
                 <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
               </button>
             </th>
-            <th class="px-4 py-3">
-              <button type="button" class="group inline-flex items-center gap-2 text-left" data-sort="finalqa">
-                <span>Final QA</span>
-                <i class="fas fa-sort text-gray-300 group-hover:text-gray-500"></i>
-              </button>
-            </th>
-            <th class="px-4 py-3">Final Project File</th>
-            <th class="px-4 py-3">Actions</th>
+            <th class="px-4 py-3 text-right">Action</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           {{ range .projects }}
           <tr
             data-name="{{ .Name }}"
+            data-project-id="{{ .ID }}"
             data-status="{{ .Status }}"
             data-manager="{{ if .Manager }}{{ .Manager.Name }}{{ end }}"
+            data-employee="{{ if .AssignedEmployee }}{{ .AssignedEmployee.Name }}{{ end }}"
+            data-employee-id="{{ if .AssignedEmployeeID }}{{ .AssignedEmployeeID }}{{ end }}"
+            data-priority="{{ .Priority }}"
             data-approver="{{ if .Approver }}{{ .Approver.Name }}{{ end }}"
-            data-finalqa="{{ .FinalQAStatus }}"
+            data-member-ids="{{ if .Team }}{{ range $index, $member := .Team.Members }}{{ if $index }},{{ end }}{{ $member.ID }}{{ end }}{{ end }}"
           >
             <td class="px-4 py-3">
               <p class="font-medium text-gray-900">{{ .Name }}</p>
@@ -91,47 +106,27 @@
               {{ end }}
             </td>
             <td class="px-4 py-3">{{ if .Manager }}{{ .Manager.Name }}{{ else }}-{{ end }}</td>
+            <td class="px-4 py-3">{{ if .AssignedEmployee }}{{ .AssignedEmployee.Name }}{{ else }}-{{ end }}</td>
+            <td class="px-4 py-3">
+              {{ if eq .Priority "high" }}
+                <span class="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700">High</span>
+              {{ else if eq .Priority "medium" }}
+                <span class="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Medium</span>
+              {{ else }}
+                <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Low</span>
+              {{ end }}
+            </td>
             <td class="px-4 py-3">{{ if .Approver }}{{ .Approver.Name }}{{ else }}-{{ end }}</td>
-            <td class="px-4 py-3">
-              {{ if eq .FinalQAStatus "pending_qa_review" }}
-                <span class="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700">Pending Review</span>
-              {{ else if eq .FinalQAStatus "approved" }}
-                <span class="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Approved</span>
-              {{ else if eq .FinalQAStatus "rejected" }}
-                <span class="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700">Rejected</span>
+            <td class="px-4 py-3 text-right">
+              {{ if and (ne .Status "completed") (ne .Status "cancelled") }}
+              <button type="button"
+                class="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                data-assign-project>
+                <i class="fas fa-user-plus"></i>
+                <span>{{ if .AssignedEmployee }}Update Assignment{{ else }}Assign Project{{ end }}</span>
+              </button>
               {{ else }}
-                <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">Not Submitted</span>
-              {{ end }}
-            </td>
-            <td class="px-4 py-3">
-              <form method="POST" action="/supervisor/projects/upload-final/{{ .ID }}" enctype="multipart/form-data" class="space-y-2">
-                <input type="file" name="file" required class="block w-full rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-700">
-                <button type="submit" class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">
-                  Upload Final File
-                </button>
-              </form>
-              {{ $projectFiles := index $.FinalFilesByProject (.ID.String) }}
-              {{ if $projectFiles }}
-              <div class="mt-2 space-y-1">
-                {{ range $projectFiles }}
-                <a href="{{ .download_url }}" target="_blank" class="block text-xs text-blue-600 hover:underline">{{ .file_name }}</a>
-                {{ end }}
-              </div>
-              {{ else }}
-              <p class="mt-2 text-xs text-gray-500">No final file uploaded yet.</p>
-              {{ end }}
-            </td>
-            <td class="px-4 py-3">
-              {{ if and .ApproverID (ne .FinalQAStatus "pending_qa_review") (ne .FinalQAStatus "approved") }}
-              <form method="POST" action="/supervisor/projects/submit-for-qa/{{ .ID }}">
-                <button type="submit" class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
-                  Submit to Final QA
-                </button>
-              </form>
-              {{ else if not .ApproverID }}
-              <span class="text-xs text-gray-500">No QA approver assigned</span>
-              {{ else }}
-              <span class="text-xs text-gray-500">Already submitted</span>
+              <span class="text-xs text-gray-400">Locked</span>
               {{ end }}
             </td>
           </tr>
@@ -156,7 +151,84 @@
   </div>
 </div>
 
-<script src="/static/js/admin/projects.js"></script>
+<div id="assignProjectModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-gray-900/50" id="assignProjectModalOverlay"></div>
+  <div class="relative mx-auto flex min-h-full max-w-2xl items-center px-4 py-8">
+    <div class="w-full rounded-2xl bg-white shadow-xl">
+      <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900" id="assignProjectModalTitle">Assign Project</h2>
+          <p class="text-sm text-gray-500" id="assignProjectModalSubtitle">Choose a project and assign it to one employee on your team.</p>
+        </div>
+        <button type="button"
+          id="closeAssignProjectModal"
+          class="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+          aria-label="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form method="POST" id="assignProjectForm" class="space-y-5 px-6 py-5">
+        <div>
+          <label class="text-sm font-medium text-gray-700">Project</label>
+          <select id="assignProjectId" required
+            class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">Select Project</option>
+            {{ range .projects }}
+            {{ if and (ne .Status "completed") (ne .Status "cancelled") }}
+            <option value="{{ .ID }}"
+                    data-member-ids="{{ if .Team }}{{ range $index, $member := .Team.Members }}{{ if $index }},{{ end }}{{ $member.ID }}{{ end }}{{ end }}"
+                    data-assigned-employee-id="{{ if .AssignedEmployeeID }}{{ .AssignedEmployeeID }}{{ end }}"
+                    data-assigned-employee-name="{{ if .AssignedEmployee }}{{ .AssignedEmployee.Name }}{{ end }}"
+                    data-priority="{{ .Priority }}">
+              {{ .Name }}
+            </option>
+            {{ end }}
+            {{ end }}
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-gray-700">Employee</label>
+          <select name="assigned_employee_id" id="assignEmployeeId" disabled
+            class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">Select Project First</option>
+            {{ range .Users }}
+            <option value="{{ .ID }}">{{ .FirstName }} {{ .LastName }}</option>
+            {{ end }}
+          </select>
+          <p class="mt-2 text-xs text-gray-500" id="assignEmployeeHelp">Select a project to assign or review its current employee.</p>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-gray-700">Project Priority</label>
+          <select name="priority" id="assignProjectPriority" disabled
+            class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">Select Project First</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <p class="mt-2 text-xs text-gray-500" id="assignPriorityHelp">Choose the priority when assigning the employee.</p>
+        </div>
+
+        <div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+          <button type="button"
+            id="cancelAssignProjectModal"
+            class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit" id="submitAssignProject"
+            class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300">
+            Assign Project
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/supervisor/projects.js"></script>
 
 {{ template "supervisor-footer" . }}
 {{ end }}

@@ -85,7 +85,7 @@
     if (filteredRows.length === 0) {
       const empty = document.createElement('tr');
       empty.innerHTML = `
-        <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500">
+        <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">
           No projects match your search.
         </td>
       `;
@@ -143,11 +143,15 @@
         const name = normalize(row.dataset.name);
         const status = normalize(row.dataset.status);
         const manager = normalize(row.dataset.manager);
+        const employee = normalize(row.dataset.employee);
+        const priority = normalize(row.dataset.priority);
         const approver = normalize(row.dataset.approver);
         return (
           name.includes(query) ||
           status.includes(query) ||
           manager.includes(query) ||
+          employee.includes(query) ||
+          priority.includes(query) ||
           approver.includes(query)
         );
       });
@@ -185,6 +189,7 @@
   const inputDescription = document.getElementById('projectDescription');
   const selectStatus = document.getElementById('projectStatus');
   const selectManager = document.getElementById('projectManagerId');
+  const selectAssignedEmployee = document.getElementById('projectAssignedEmployeeId');
   const selectApprover = document.getElementById('projectApproverId');
 
   const openModal = () => {
@@ -208,6 +213,7 @@
     if (inputDescription) inputDescription.value = '';
     if (selectStatus) selectStatus.value = 'draft';
     if (selectManager) selectManager.value = '';
+    if (selectAssignedEmployee) selectAssignedEmployee.value = '';
     if (selectApprover) selectApprover.value = '';
   };
 
@@ -220,6 +226,7 @@
     if (inputDescription) inputDescription.value = data.description || '';
     if (selectStatus && data.status) selectStatus.value = data.status;
     if (selectManager) selectManager.value = data.managerId || '';
+    if (selectAssignedEmployee) selectAssignedEmployee.value = data.employeeId || '';
     if (selectApprover) selectApprover.value = data.approverId || '';
   };
 
@@ -238,6 +245,7 @@
         description: row.dataset.description,
         status: row.dataset.status,
         managerId: row.dataset.managerId,
+        employeeId: row.dataset.employeeId,
         approverId: row.dataset.approverId
       });
       openModal();

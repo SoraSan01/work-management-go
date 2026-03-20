@@ -188,6 +188,8 @@ func SetupRoutes(r *gin.Engine) {
 			task.POST("/delete/:id", taskController.Delete)
 			task.GET("/board", taskController.Board)
 			task.POST("/start/:id", taskController.StartTask)
+			task.POST("/pause/:id", taskController.PauseTask)
+			task.POST("/resume/:id", taskController.ResumeTask)
 			task.POST("/upload/:taskId", fileController.Upload)
 			task.GET("/files/:taskId", fileController.ListByTask)
 			task.GET("/review-comments/:taskId", taskReviewController.ListComments)
@@ -359,6 +361,8 @@ func SetupRoutes(r *gin.Engine) {
 			task.POST("/update/:id", taskController.Update)
 			task.GET("/board", taskController.Board)
 			task.POST("/start/:id", taskController.StartTask)
+			task.POST("/pause/:id", taskController.PauseTask)
+			task.POST("/resume/:id", taskController.ResumeTask)
 			task.POST("/upload/:taskId", fileController.Upload)
 			task.GET("/files/:taskId", fileController.ListByTask)
 			task.GET("/review-comments/:taskId", taskReviewController.ListComments)
@@ -390,6 +394,8 @@ func SetupRoutes(r *gin.Engine) {
 			task.POST("/store", taskController.Store)
 			task.GET("/board", taskController.Board)
 			task.POST("/start/:id", taskController.StartTask)
+			task.POST("/pause/:id", taskController.PauseTask)
+			task.POST("/resume/:id", taskController.ResumeTask)
 			task.GET("/files/:taskId", fileController.ListByTask)
 			task.GET("/review-comments/:taskId", taskReviewController.ListComments)
 		}
@@ -397,7 +403,7 @@ func SetupRoutes(r *gin.Engine) {
 		project := supervisor.Group("/projects")
 		{
 			project.GET("/", supervisorController.Projects)
-			project.POST("/upload-final/:id", fileController.UploadProjectFinal)
+			project.POST("/:id/assign-employee", supervisorController.AssignProjectEmployee)
 			project.POST("/submit-for-qa/:id", supervisorController.SubmitProjectForQA)
 		}
 

@@ -4,7 +4,7 @@
 <div class="space-y-6">
   <div class="flex flex-col gap-2">
     <h1 class="text-2xl font-semibold text-gray-900">Project Requests</h1>
-    <p class="text-sm text-gray-500">Approve or reject customer project requests and assign a team.</p>
+    <p class="text-sm text-gray-500">Approve or reject customer project requests and assign a team. Supervisors will assign the employee after approval.</p>
   </div>
 
   <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -85,7 +85,9 @@
                   <select name="team_id" required class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs">
                     <option value="">Assign Team</option>
                     {{ range $.teams }}
-                    <option value="{{ .ID }}">{{ .Name }}</option>
+                    <option value="{{ .ID }}">
+                      {{ .Name }}
+                    </option>
                     {{ end }}
                   </select>
                   <button type="submit" class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Approve</button>
@@ -110,7 +112,6 @@
     </div>
   </div>
 </div>
-
 <script src="/static/js/admin/project-requests.js"></script>
 {{ template "manager-footer" . }}
 {{ end }}

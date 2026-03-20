@@ -55,17 +55,6 @@ func (ac *QualityAssuranceController) Index(c *gin.Context) {
 	var pendingFinalQA int64
 	var approvedProjects int64
 	var sentProjects int64
-	for _, p := range projects {
-		if p.FinalQAStatus == "pending_qa_review" {
-			pendingFinalQA++
-		}
-		if p.FinalQAStatus == "approved" {
-			approvedProjects++
-			if p.FinalQASent {
-				sentProjects++
-			}
-		}
-	}
 
 	var forReviewTasks int64
 	var doneTasks int64
@@ -103,37 +92,52 @@ func (ac *QualityAssuranceController) ProjectReviews(c *gin.Context) {
 		return
 	}
 
-	finalFilesByProject := map[string][]gin.H{}
-	if len(projects) > 0 {
-		projectIDs := make([]uuid.UUID, 0, len(projects))
-		for _, project := range projects {
-			projectIDs = append(projectIDs, project.ID)
-		}
+	type latestProjectFile struct {
+		ProjectID uuid.UUID
+		ID        uuid.UUID
+		FilePath  string
+		CreatedAt time.Time
+	}
 
-		var finalFiles []models.ProjectFinalFile
-		_ = ac.ProjectRepo.DB.
-			Where("project_id IN ?", projectIDs).
-			Order("created_at DESC").
-			Find(&finalFiles).Error
+	var projectFiles []latestProjectFile
+	if err := ac.ProjectRepo.DB.
+		Table("files").
+		Select("files.project_id, files.id, files.file_path, files.created_at").
+		Where("files.is_latest = ?", true).
+		Where("files.project_id IN ?", extractProjectIDs(projects)).
+		Order("files.created_at DESC").
+		Scan(&projectFiles).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to load project files")
+		return
+	}
 
-		for _, file := range finalFiles {
-			key := file.ProjectID.String()
-			downloadURL := "/" + strings.ReplaceAll(file.FilePath, "\\", "/")
-			finalFilesByProject[key] = append(finalFilesByProject[key], gin.H{
-				"id":           file.ID,
-				"file_name":    file.FileName,
-				"download_url": downloadURL,
-				"uploaded_at":  file.CreatedAt,
-			})
-		}
+	filesByProject := make(map[string][]gin.H)
+	for _, file := range projectFiles {
+		key := file.ProjectID.String()
+		filesByProject[key] = append(filesByProject[key], gin.H{
+			"id":           file.ID,
+			"file_name":    extractDisplayFileName(file.FilePath),
+			"download_url": buildPublicFileURL(file.FilePath),
+			"uploaded_at":  file.CreatedAt,
+		})
 	}
 
 	c.HTML(http.StatusOK, "qa/projects/reviews.html", utils.TemplateContext(c, gin.H{
-		"PageTitle":           "Project Final Review",
-		"ActivePage":          "project-reviews",
-		"projects":            projects,
-		"FinalFilesByProject": finalFilesByProject,
+		"PageTitle":      "Project Final Review",
+		"ActivePage":     "project-reviews",
+		"projects":       projects,
+		"FilesByProject": filesByProject,
 	}))
+}
+
+func extractProjectIDs(projects []models.Project) []uuid.UUID {
+	projectIDs := make([]uuid.UUID, 0, len(projects))
+	for _, project := range projects {
+		if project.ID != uuid.Nil {
+			projectIDs = append(projectIDs, project.ID)
+		}
+	}
+	return projectIDs
 }
 
 func (ac *QualityAssuranceController) ProcessProjectReview(c *gin.Context) {
@@ -146,7 +150,6 @@ func (ac *QualityAssuranceController) ProcessProjectReview(c *gin.Context) {
 
 	var form struct {
 		Decision string `form:"decision"`
-		Comment  string `form:"comment"`
 	}
 	_ = c.ShouldBind(&form)
 
@@ -170,38 +173,26 @@ func (ac *QualityAssuranceController) ProcessProjectReview(c *gin.Context) {
 		return
 	}
 
-	if project.FinalQAStatus != "pending_qa_review" {
-		c.String(http.StatusBadRequest, "Project is not awaiting final QA review")
-		return
-	}
-
 	sendNow := strings.EqualFold(strings.TrimSpace(c.PostForm("send_now")), "true")
 	now := time.Now()
 	newProjectStatus := "in_progress"
+	nextApprovalStatus := "final_qa_rejected"
 	if decision == "approved" && sendNow {
 		newProjectStatus = "completed"
 	}
+	if decision == "approved" {
+		newProjectStatus = "completed"
+		if sendNow {
+			nextApprovalStatus = "delivered"
+		} else {
+			nextApprovalStatus = "final_qa_approved"
+		}
+	}
 
 	updates := map[string]interface{}{
-		"final_qa_status":      decision,
-		"final_qa_comment":     strings.TrimSpace(c.PostForm("comment")),
-		"final_qa_reviewed_by": qaID,
-		"final_qa_reviewed_at": &now,
-		"status":               newProjectStatus,
-	}
-	if decision == "approved" {
-		updates["final_qa_sent"] = sendNow
-		if sendNow {
-			updates["final_qa_sent_at"] = &now
-			updates["final_qa_sent_by"] = qaID
-		} else {
-			updates["final_qa_sent_at"] = nil
-			updates["final_qa_sent_by"] = nil
-		}
-	} else {
-		updates["final_qa_sent"] = false
-		updates["final_qa_sent_at"] = nil
-		updates["final_qa_sent_by"] = nil
+		"approval_status": nextApprovalStatus,
+		"status":          newProjectStatus,
+		"updated_at":      now,
 	}
 
 	err = ac.ProjectRepo.DB.Model(&models.Project{}).
@@ -240,23 +231,14 @@ func (ac *QualityAssuranceController) SendApprovedProject(c *gin.Context) {
 		c.String(http.StatusForbidden, "You can only send projects assigned to you")
 		return
 	}
-	if project.FinalQAStatus != "approved" {
-		c.String(http.StatusBadRequest, "Only approved projects can be sent")
-		return
-	}
-	if project.FinalQASent {
-		c.Redirect(http.StatusSeeOther, "/qa/projects/reviews")
-		return
-	}
 
 	now := time.Now()
 	if err := ac.ProjectRepo.DB.Model(&models.Project{}).
 		Where("id = ?", project.ID).
 		Updates(map[string]interface{}{
-			"final_qa_sent":    true,
-			"final_qa_sent_at": &now,
-			"final_qa_sent_by": qaID,
-			"status":           "completed",
+			"approval_status": "delivered",
+			"status":          "completed",
+			"updated_at":      now,
 		}).Error; err != nil {
 		c.String(http.StatusInternalServerError, "Failed to send project")
 		return
@@ -290,14 +272,6 @@ func (ac *QualityAssuranceController) Profile(c *gin.Context) {
 	projects, _ := ac.ProjectRepo.GetByAssignedQAID(qaID)
 	var approvedCount int64
 	var sentCount int64
-	for _, p := range projects {
-		if p.FinalQAStatus == "approved" {
-			approvedCount++
-			if p.FinalQASent {
-				sentCount++
-			}
-		}
-	}
 
 	c.HTML(http.StatusOK, "qa/profile/index.html", utils.TemplateContext(c, gin.H{
 		"PageTitle":        "My Profile",

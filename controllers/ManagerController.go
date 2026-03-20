@@ -53,7 +53,6 @@ func (ac *ManagerController) Index(c *gin.Context) {
 	var activeProjects int64
 	var completedProjects int64
 	var pendingReviewProjects int64
-	var pendingFinalQA int64
 
 	for _, project := range projects {
 		projectIDs = append(projectIDs, project.ID)
@@ -66,9 +65,6 @@ func (ac *ManagerController) Index(c *gin.Context) {
 
 		if project.ApprovalStatus == "pending_initial_approval" {
 			pendingReviewProjects++
-		}
-		if project.FinalQAStatus == "pending_qa_review" {
-			pendingFinalQA++
 		}
 	}
 
@@ -109,7 +105,6 @@ func (ac *ManagerController) Index(c *gin.Context) {
 		"ActiveProjects":        activeProjects,
 		"CompletedProjects":     completedProjects,
 		"PendingReviewProjects": pendingReviewProjects,
-		"PendingFinalQA":        pendingFinalQA,
 		"PendingRequests":       len(pendingRequests),
 		"TotalTasks":            totalTasks,
 		"TodoTasks":             todoTasks,
@@ -396,14 +391,14 @@ func (ac *ManagerController) ApproveProjectRequest(c *gin.Context) {
 		return
 	}
 
-	if err := ac.ProjectRepo.UpdateRequestStatus(requestID, "approved"); err != nil {
-		c.String(http.StatusInternalServerError, "Failed to approve request")
-		return
-	}
-
 	request, err := ac.ProjectRepo.GetRequestByID(requestID)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to load request")
+		return
+	}
+
+	if err := ac.ProjectRepo.UpdateRequestStatus(requestID, "approved"); err != nil {
+		c.String(http.StatusInternalServerError, "Failed to approve request")
 		return
 	}
 
@@ -423,6 +418,10 @@ func (ac *ManagerController) ApproveProjectRequest(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "Failed to create project")
 		return
 	}
+	if _, err := ac.ProjectRepo.EnsureKickoffTask(&project); err != nil {
+		c.String(http.StatusInternalServerError, "Failed to prepare employee taskboard")
+		return
+	}
 
 	approval := models.Approval{
 		ProjectID:  project.ID,
@@ -435,7 +434,7 @@ func (ac *ManagerController) ApproveProjectRequest(c *gin.Context) {
 	_ = ac.ProjectRepo.CreateApproval(&approval)
 	_ = ac.ProjectRepo.SyncWorkflowStatus(project.ID)
 
-	_ = ac.NotificationRepo.CreateForUserWithLink(team.SupervisorID, "New project assigned to your team: "+project.Name, "/supervisor/projects")
+	_ = ac.NotificationRepo.CreateForUserWithLink(team.SupervisorID, "New project assigned to your team. Assign an employee to start: "+project.Name, "/supervisor/projects")
 
 	c.Redirect(http.StatusSeeOther, "/manager/projects/requests")
 }
@@ -461,11 +460,11 @@ func (ac *ManagerController) Teams(c *gin.Context) {
 	employees, _ := ac.TeamRepo.GetEmployees()
 
 	c.HTML(http.StatusOK, "manager/teams/index.html", utils.TemplateContext(c, gin.H{
-		"PageTitle":    "Teams",
-		"ActivePage":   "teams",
-		"teams":        teams,
-		"supervisors":  supervisors,
-		"employees":    employees,
+		"PageTitle":   "Teams",
+		"ActivePage":  "teams",
+		"teams":       teams,
+		"supervisors": supervisors,
+		"employees":   employees,
 	}))
 }
 

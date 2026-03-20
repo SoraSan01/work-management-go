@@ -23,6 +23,7 @@ func (r *ProjectRepository) GetAll() ([]models.Project, error) {
 	var projects []models.Project
 	err := r.DB.
 		Preload("Manager").
+		Preload("AssignedEmployee").
 		Preload("Approver").
 		Preload("Tasks").
 		Preload("Team").
@@ -44,14 +45,12 @@ func (r *ProjectRepository) GetByID(id string) (models.Project, error) {
 	var project models.Project
 	err := r.DB.
 		Preload("Manager").
+		Preload("AssignedEmployee").
 		Preload("Approver").
 		Preload("Tasks").
 		Preload("Team").
 		Preload("Team.Supervisor").
 		Preload("Team.Members").
-		Preload("FinalQASubmitter").
-		Preload("FinalQAReviewer").
-		Preload("FinalQASender").
 		First(&project, "id = ?", id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return project, nil
@@ -71,7 +70,7 @@ func (r *ProjectRepository) Update(project *models.Project) error {
 
 // Delete project
 func (r *ProjectRepository) Delete(id string) error {
-	return r.DB.Delete(&models.Project{}, "id = ?", id).Error
+	return r.DB.Where("id = ?", id).Delete(&models.Project{}).Error
 }
 
 // Get pending project requests
@@ -130,14 +129,12 @@ func (r *ProjectRepository) GetBySupervisorID(supervisorID uuid.UUID) ([]models.
 		Joins("JOIN teams ON teams.id = projects.team_id").
 		Where("teams.supervisor_id = ?", supervisorID).
 		Preload("Manager").
+		Preload("AssignedEmployee").
 		Preload("Approver").
 		Preload("Tasks").
 		Preload("Team").
 		Preload("Team.Supervisor").
 		Preload("Team.Members").
-		Preload("FinalQASubmitter").
-		Preload("FinalQAReviewer").
-		Preload("FinalQASender").
 		Find(&projects).Error
 	if err == nil {
 		r.hydrateMissingManagers(projects)
@@ -150,14 +147,12 @@ func (r *ProjectRepository) GetByAssignedQAID(qaID uuid.UUID) ([]models.Project,
 	err := r.DB.
 		Where("approver_id = ?", qaID).
 		Preload("Manager").
+		Preload("AssignedEmployee").
 		Preload("Approver").
 		Preload("Tasks").
 		Preload("Team").
 		Preload("Team.Members").
 		Preload("Team.Supervisor").
-		Preload("FinalQASubmitter").
-		Preload("FinalQAReviewer").
-		Preload("FinalQASender").
 		Order("updated_at DESC").
 		Find(&projects).Error
 	if err == nil {
@@ -171,14 +166,12 @@ func (r *ProjectRepository) GetByManagerID(managerID uuid.UUID) ([]models.Projec
 	err := r.DB.
 		Where("manager_id = ?", managerID).
 		Preload("Manager").
+		Preload("AssignedEmployee").
 		Preload("Approver").
 		Preload("Tasks").
 		Preload("Team").
 		Preload("Team.Members").
 		Preload("Team.Supervisor").
-		Preload("FinalQASubmitter").
-		Preload("FinalQAReviewer").
-		Preload("FinalQASender").
 		Order("updated_at DESC").
 		Find(&projects).Error
 	if err == nil {
@@ -215,60 +208,46 @@ func (r *ProjectRepository) hydrateMissingManagers(projects []models.Project) {
 
 func (r *ProjectRepository) SyncWorkflowStatus(projectID uuid.UUID) error {
 	var project models.Project
-	if err := r.DB.Select("id", "manager_id", "approval_status", "final_qa_status", "final_qa_sent", "status").
+	if err := r.DB.Select("id", "manager_id", "approval_status", "status").
 		First(&project, "id = ?", projectID).Error; err != nil {
 		return err
 	}
 
 	var totalTasks int64
-	if err := r.DB.Model(&models.Task{}).Where("project_id = ?", projectID).Count(&totalTasks).Error; err != nil {
+	if err := r.DB.Model(&models.Task{}).
+		Where("project_id = ?", projectID).
+		Count(&totalTasks).Error; err != nil {
 		return err
 	}
 
-	var doneTasks int64
-	if err := r.DB.Model(&models.Task{}).
-		Where("project_id = ? AND status IN ?", projectID, []string{"done", "completed"}).
-		Count(&doneTasks).Error; err != nil {
-		return err
+	var remainingTasks int64
+	if totalTasks > 0 {
+		if err := r.DB.Model(&models.Task{}).
+			Where("project_id = ? AND status <> ?", projectID, "done").
+			Count(&remainingTasks).Error; err != nil {
+			return err
+		}
 	}
 
 	updates := map[string]interface{}{
 		"updated_at": time.Now(),
 	}
 
-	switch project.FinalQAStatus {
-	case "approved":
-		if project.FinalQASent {
-			updates["status"] = "completed"
-		} else {
-			updates["status"] = "in_progress"
-		}
-	case "pending_qa_review":
-		updates["status"] = "completed"
-	case "rejected":
-		updates["status"] = "in_progress"
-	default:
-		switch project.ApprovalStatus {
-		case "rejected":
-			updates["status"] = "cancelled"
-		case "approved":
-			if totalTasks > 0 && doneTasks == totalTasks {
-				updates["status"] = "completed"
-			} else if project.Status != "draft" {
-				updates["status"] = "in_progress"
-			}
-		}
-	}
-
 	nextStatus := project.Status
 	if v, ok := updates["status"].(string); ok {
 		nextStatus = v
 	}
-	if nextStatus == "completed" && strings.HasPrefix(project.ApprovalStatus, "pending") {
+	if nextStatus == "completed" && project.ApprovalStatus == "pending_initial_approval" {
 		updates["approval_status"] = "approved"
 	}
 	if project.ApprovalStatus == "pending_manager_assignment" && project.ManagerID != nil {
 		updates["approval_status"] = "pending_initial_approval"
+	}
+	if totalTasks > 0 && remainingTasks == 0 && project.Status != "cancelled" {
+		updates["status"] = "completed"
+	}
+	if totalTasks > 0 && remainingTasks > 0 && project.ApprovalStatus == "approved" && project.Status != "in_progress" {
+		updates["status"] = "in_progress"
 	}
 
 	if len(updates) == 1 {
@@ -278,4 +257,52 @@ func (r *ProjectRepository) SyncWorkflowStatus(projectID uuid.UUID) error {
 	return r.DB.Model(&models.Project{}).
 		Where("id = ?", projectID).
 		Updates(updates).Error
+}
+
+func (r *ProjectRepository) SyncTaskAssignees(projectID uuid.UUID, assignedEmployeeID uuid.UUID) error {
+	return r.DB.Model(&models.Task{}).
+		Where("project_id = ?", projectID).
+		Updates(map[string]interface{}{
+			"assigned_to": assignedEmployeeID,
+			"updated_at":  time.Now(),
+		}).Error
+}
+
+func (r *ProjectRepository) EnsureKickoffTask(project *models.Project) (bool, error) {
+	if project == nil || project.AssignedEmployeeID == nil {
+		return false, nil
+	}
+
+	var existingCount int64
+	if err := r.DB.Model(&models.Task{}).
+		Where("project_id = ?", project.ID).
+		Count(&existingCount).Error; err != nil {
+		return false, err
+	}
+	if existingCount > 0 {
+		return false, nil
+	}
+
+	dueDate := project.DueDate
+	if dueDate.IsZero() {
+		dueDate = time.Now()
+	}
+
+	task := models.Task{
+		ID:          uuid.New(),
+		ProjectID:   project.ID,
+		AssignedTo:  *project.AssignedEmployeeID,
+		Title:       project.Name,
+		Description: project.Description,
+		Status:      "todo",
+		Priority:    project.Priority,
+		DueDate:     dueDate,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	if strings.TrimSpace(task.Priority) == "" {
+		task.Priority = "low"
+	}
+
+	return true, r.DB.Create(&task).Error
 }

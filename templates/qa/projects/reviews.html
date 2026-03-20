@@ -48,7 +48,7 @@
               </button>
             </th>
             <th class="px-4 py-3">Final QA</th>
-            <th class="px-4 py-3">Final Project Files</th>
+            <th class="px-4 py-3">Project Files</th>
             <th class="px-4 py-3">Delivery</th>
             <th class="px-4 py-3">Action</th>
           </tr>
@@ -57,7 +57,7 @@
           {{ range .projects }}
           <tr
             data-name="{{ .Name }}"
-            data-status="{{ .Status }} {{ .FinalQAStatus }}"
+            data-status="{{ .Status }} {{ .ApprovalStatus }}"
             data-manager="{{ if .Team.Supervisor }}{{ .Team.Supervisor.Name }}{{ end }}"
             data-approver="qa">
             <td class="px-4 py-3 align-top">
@@ -71,21 +71,20 @@
               <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">{{ .Status }}</span>
             </td>
             <td class="px-4 py-3 align-top">
-              {{ if eq .FinalQAStatus "pending_qa_review" }}
+              {{ if eq .ApprovalStatus "pending_final_qa" }}
                 <span class="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700">Pending Review</span>
-              {{ else if eq .FinalQAStatus "approved" }}
+              {{ else if eq .ApprovalStatus "final_qa_approved" }}
                 <span class="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Approved</span>
-              {{ else if eq .FinalQAStatus "rejected" }}
+              {{ else if eq .ApprovalStatus "final_qa_rejected" }}
                 <span class="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700">Rejected</span>
+              {{ else if eq .ApprovalStatus "delivered" }}
+                <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">Delivered</span>
               {{ else }}
                 <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">Not Submitted</span>
               {{ end }}
-              {{ if .FinalQAComment }}
-              <p class="mt-2 text-xs text-gray-600">{{ .FinalQAComment }}</p>
-              {{ end }}
             </td>
             <td class="px-4 py-3 align-top">
-              {{ $projectFiles := index $.FinalFilesByProject (.ID.String) }}
+              {{ $projectFiles := index $.FilesByProject (.ID.String) }}
               {{ if $projectFiles }}
                 <div class="space-y-1">
                   {{ range $projectFiles }}
@@ -93,26 +92,22 @@
                   {{ end }}
                 </div>
               {{ else }}
-                <span class="text-xs text-gray-500">No final project file uploaded</span>
+                <span class="text-xs text-gray-500">No latest task output files available</span>
               {{ end }}
             </td>
             <td class="px-4 py-3 align-top">
-              {{ if and (eq .FinalQAStatus "approved") .FinalQASent }}
+              {{ if eq .ApprovalStatus "delivered" }}
                 <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">Sent to Customer</span>
-                {{ if .FinalQASentAt }}
-                <p class="mt-2 text-xs text-gray-500">{{ .FinalQASentAt.Format "Jan 02, 2006 3:04 PM" }}</p>
-                {{ end }}
-              {{ else if eq .FinalQAStatus "approved" }}
+              {{ else if eq .ApprovalStatus "final_qa_approved" }}
                 <span class="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Not Sent Yet</span>
               {{ else }}
                 <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">Not Available</span>
               {{ end }}
             </td>
             <td class="px-4 py-3 align-top">
-              {{ if eq .FinalQAStatus "pending_qa_review" }}
+              {{ if eq .ApprovalStatus "pending_final_qa" }}
               <form action="/qa/projects/reviews/{{ .ID }}" method="POST" class="space-y-2">
                 <input type="hidden" name="decision" value="">
-                <textarea name="comment" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs" placeholder="Optional QA comment"></textarea>
                 <label class="flex items-center gap-2 text-xs text-gray-600">
                   <input type="checkbox" name="send_now" value="true" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                   Send to customer immediately after approval
@@ -126,7 +121,7 @@
                   </button>
                 </div>
               </form>
-              {{ else if and (eq .FinalQAStatus "approved") (not .FinalQASent) }}
+              {{ else if eq .ApprovalStatus "final_qa_approved" }}
               <form action="/qa/projects/send/{{ .ID }}" method="POST">
                 <button type="submit" class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
                   Send to Customer

@@ -49,7 +49,7 @@ func (ac *CustomerController) Index(c *gin.Context) {
 	_ = ac.Repo.DB.
 		Table("project_requests").
 		Select("project_requests.id, project_requests.title, project_requests.status, project_requests.deadline, project_requests.created_at, project_requests.updated_at, projects.name as project_name").
-		Joins("LEFT JOIN projects ON projects.project_request_id = project_requests.id").
+		Joins("LEFT JOIN projects ON projects.project_request_id = project_requests.id AND projects.deleted_at IS NULL").
 		Where("project_requests.customer_id = ?", customerID).
 		Order("project_requests.updated_at DESC").
 		Limit(6).
@@ -73,22 +73,38 @@ func (ac *CustomerController) Index(c *gin.Context) {
 	_ = ac.Repo.DB.
 		Table("projects").
 		Joins("JOIN project_requests ON project_requests.id = projects.project_request_id").
-		Where("project_requests.customer_id = ?", customerID).
+		Where("project_requests.customer_id = ? AND projects.deleted_at IS NULL", customerID).
 		Count(&totalProjects).Error
 	_ = ac.Repo.DB.
 		Table("projects").
 		Joins("JOIN project_requests ON project_requests.id = projects.project_request_id").
-		Where("project_requests.customer_id = ? AND projects.status = ?", customerID, "in_progress").
+		Where("project_requests.customer_id = ? AND projects.status = ? AND projects.deleted_at IS NULL", customerID, "in_progress").
 		Count(&inProgressProjects).Error
 	_ = ac.Repo.DB.
 		Table("projects").
 		Joins("JOIN project_requests ON project_requests.id = projects.project_request_id").
-		Where("project_requests.customer_id = ? AND projects.status = ?", customerID, "completed").
+		Where(`
+			project_requests.customer_id = ?
+			AND projects.deleted_at IS NULL
+			AND (
+				projects.approval_status = ?
+				OR projects.status = ?
+				OR (
+					EXISTS (SELECT 1 FROM tasks WHERE tasks.project_id = projects.id)
+					AND NOT EXISTS (
+						SELECT 1
+						FROM tasks
+						WHERE tasks.project_id = projects.id
+						  AND tasks.status <> ?
+					)
+				)
+			)
+		`, customerID, "delivered", "completed", "done").
 		Count(&completedProjects).Error
 	_ = ac.Repo.DB.
 		Table("projects").
 		Joins("JOIN project_requests ON project_requests.id = projects.project_request_id").
-		Where("project_requests.customer_id = ? AND projects.final_qa_status = ?", customerID, "pending_qa_review").
+		Where("project_requests.customer_id = ? AND projects.approval_status = ? AND projects.deleted_at IS NULL", customerID, "pending_final_qa").
 		Count(&pendingFinalQA).Error
 
 	var approvalRate int64
@@ -150,12 +166,28 @@ func (ac *CustomerController) Profile(c *gin.Context) {
 	_ = ac.Repo.DB.
 		Table("projects").
 		Joins("JOIN project_requests ON project_requests.id = projects.project_request_id").
-		Where("project_requests.customer_id = ?", customerID).
+		Where("project_requests.customer_id = ? AND projects.deleted_at IS NULL", customerID).
 		Count(&totalProjects).Error
 	_ = ac.Repo.DB.
 		Table("projects").
 		Joins("JOIN project_requests ON project_requests.id = projects.project_request_id").
-		Where("project_requests.customer_id = ? AND projects.status = ?", customerID, "completed").
+		Where(`
+			project_requests.customer_id = ?
+			AND projects.deleted_at IS NULL
+			AND (
+				projects.approval_status = ?
+				OR projects.status = ?
+				OR (
+					EXISTS (SELECT 1 FROM tasks WHERE tasks.project_id = projects.id)
+					AND NOT EXISTS (
+						SELECT 1
+						FROM tasks
+						WHERE tasks.project_id = projects.id
+						  AND tasks.status <> ?
+					)
+				)
+			)
+		`, customerID, "delivered", "completed", "done").
 		Count(&completedProjects).Error
 
 	c.HTML(http.StatusOK, "customer/profile/index.html", utils.TemplateContext(c, gin.H{

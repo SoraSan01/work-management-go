@@ -37,12 +37,14 @@ func (pc *ProjectController) Index(c *gin.Context) {
 	}
 	managers, _ := pc.UserRepo.GetUsersByRole("Manager")
 	approvers, _ := pc.UserRepo.GetUsersByRole("QualityAssurance")
+	employees, _ := pc.TeamRepo.GetEmployees()
 	c.HTML(http.StatusOK, "admin/projects/index.html", utils.TemplateContext(c, gin.H{
-		"PageTitle": "Projects",
+		"PageTitle":  "Projects",
 		"ActivePage": "projects",
-		"projects":  projects,
-		"managers":  managers,
-		"approvers": approvers,
+		"projects":   projects,
+		"managers":   managers,
+		"approvers":  approvers,
+		"employees":  employees,
 	}))
 }
 
@@ -62,10 +64,10 @@ func (pc *ProjectController) Create(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin/projects/create.html", utils.TemplateContext(c, gin.H{
-		"title":     "Create Project",
+		"title":      "Create Project",
 		"ActivePage": "projects",
-		"managers":  managers,
-		"approvers": approvers,
+		"managers":   managers,
+		"approvers":  approvers,
 	}))
 }
 
@@ -73,13 +75,14 @@ func (pc *ProjectController) Create(c *gin.Context) {
 func (pc *ProjectController) Store(c *gin.Context) {
 	// Bind form data
 	var form struct {
-		Name        string `form:"Name" binding:"required"`
-		Description string `form:"Description"`
-		ManagerID   string `form:"ManagerID" binding:"required"`
-		ApproverID  string `form:"ApproverID" binding:"required"`
-		StartDate   string `form:"StartDate"`
-		DueDate     string `form:"DueDate"`
-		Status      string `form:"Status"`
+		Name               string `form:"Name" binding:"required"`
+		Description        string `form:"Description"`
+		ManagerID          string `form:"ManagerID" binding:"required"`
+		AssignedEmployeeID string `form:"AssignedEmployeeID" binding:"required"`
+		ApproverID         string `form:"ApproverID" binding:"required"`
+		StartDate          string `form:"StartDate"`
+		DueDate            string `form:"DueDate"`
+		Status             string `form:"Status"`
 	}
 
 	if err := c.ShouldBind(&form); err != nil {
@@ -101,12 +104,19 @@ func (pc *ProjectController) Store(c *gin.Context) {
 		return
 	}
 
+	assignedEmployeeID, err := uuid.Parse(form.AssignedEmployeeID)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid assigned employee ID")
+		return
+	}
+
 	project := models.Project{
-		Name:        form.Name,
-		Description: form.Description,
-		ManagerID:   &managerID,
-		ApproverID:  &approverID,
-		Status:      form.Status,
+		Name:               form.Name,
+		Description:        form.Description,
+		ManagerID:          &managerID,
+		AssignedEmployeeID: &assignedEmployeeID,
+		ApproverID:         &approverID,
+		Status:             form.Status,
 	}
 
 	// Optional: parse dates if your model uses time.Time
@@ -125,6 +135,10 @@ func (pc *ProjectController) Store(c *gin.Context) {
 
 	if err := pc.Repo.Create(&project); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	if _, err := pc.Repo.EnsureKickoffTask(&project); err != nil {
+		c.String(http.StatusInternalServerError, "Failed to prepare employee taskboard")
 		return
 	}
 
@@ -167,11 +181,11 @@ func (pc *ProjectController) Edit(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin/projects/edit.html", utils.TemplateContext(c, gin.H{
-		"title":     "Edit Project",
+		"title":      "Edit Project",
 		"ActivePage": "projects",
-		"project":   project,
-		"managers":  managers,
-		"approvers": approvers,
+		"project":    project,
+		"managers":   managers,
+		"approvers":  approvers,
 	}))
 }
 
@@ -186,13 +200,14 @@ func (pc *ProjectController) Update(c *gin.Context) {
 
 	// Bind form data with proper struct
 	var form struct {
-		Name        string `form:"Name"`
-		Description string `form:"Description"`
-		ManagerID   string `form:"ManagerID"`
-		ApproverID  string `form:"ApproverID"`
-		StartDate   string `form:"StartDate"`
-		DueDate     string `form:"DueDate"`
-		Status      string `form:"Status"`
+		Name               string `form:"Name"`
+		Description        string `form:"Description"`
+		ManagerID          string `form:"ManagerID"`
+		AssignedEmployeeID string `form:"AssignedEmployeeID"`
+		ApproverID         string `form:"ApproverID"`
+		StartDate          string `form:"StartDate"`
+		DueDate            string `form:"DueDate"`
+		Status             string `form:"Status"`
 	}
 
 	if err := c.ShouldBind(&form); err != nil {
@@ -225,6 +240,15 @@ func (pc *ProjectController) Update(c *gin.Context) {
 		project.ApproverID = &approverID
 	}
 
+	if form.AssignedEmployeeID != "" {
+		assignedEmployeeID, err := uuid.Parse(strings.TrimSpace(form.AssignedEmployeeID))
+		if err != nil {
+			c.String(http.StatusBadRequest, "Invalid assigned employee ID")
+			return
+		}
+		project.AssignedEmployeeID = &assignedEmployeeID
+	}
+
 	// Parse dates if provided
 	if form.StartDate != "" {
 		start, err := time.Parse("2006-01-02", form.StartDate)
@@ -241,6 +265,13 @@ func (pc *ProjectController) Update(c *gin.Context) {
 
 	if err := pc.Repo.Update(&project); err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	if project.AssignedEmployeeID != nil {
+		_ = pc.Repo.SyncTaskAssignees(project.ID, *project.AssignedEmployeeID)
+	}
+	if _, err := pc.Repo.EnsureKickoffTask(&project); err != nil {
+		c.String(http.StatusInternalServerError, "Failed to prepare employee taskboard")
 		return
 	}
 	_ = pc.Repo.SyncWorkflowStatus(project.ID)
@@ -266,6 +297,7 @@ func (pc *ProjectController) Requests(c *gin.Context) {
 		return
 	}
 	teams, _ := pc.TeamRepo.GetAll()
+	managers, _ := pc.UserRepo.GetUsersByRole("Manager")
 
 	// Capitalize status before sending to template
 	for i := range requests {
@@ -273,23 +305,26 @@ func (pc *ProjectController) Requests(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "admin/projects/requests.html", utils.TemplateContext(c, gin.H{
-		"title":    "Pending Requests",
-		"PageTitle": "Project Requests",
+		"title":      "Pending Requests",
+		"PageTitle":  "Project Requests",
 		"ActivePage": "project-requests",
-		"requests": requests,
-		"teams":    teams,
+		"requests":   requests,
+		"teams":      teams,
+		"managers":   managers,
 	}))
 }
 
 // Approve a project request
 func (pc *ProjectController) ApproveRequest(c *gin.Context) {
 	id := c.Param("id")
-	teamIDStr := c.PostForm("team_id")
-
-	// Update request status
-	err := pc.Repo.UpdateRequestStatus(id, "approved")
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+	teamIDStr := strings.TrimSpace(c.PostForm("team_id"))
+	managerIDStr := strings.TrimSpace(c.PostForm("manager_id"))
+	if teamIDStr == "" {
+		c.String(http.StatusBadRequest, "Team is required")
+		return
+	}
+	if managerIDStr == "" {
+		c.String(http.StatusBadRequest, "Manager is required")
 		return
 	}
 
@@ -300,33 +335,35 @@ func (pc *ProjectController) ApproveRequest(c *gin.Context) {
 		return
 	}
 
-	// Determine manager/team
-	var defaultManager models.User
-	var assignedTeamID *uuid.UUID
-
-	if teamIDStr != "" {
-		teamID, err := uuid.Parse(teamIDStr)
-		if err != nil {
-			c.String(http.StatusBadRequest, "Invalid team ID")
-			return
-		}
-		team, err := pc.TeamRepo.GetByID(teamID)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Team not found")
-			return
-		}
-		assignedTeamID = &team.ID
-		defaultManager = team.Supervisor
+	teamID, err := uuid.Parse(teamIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid team ID")
+		return
+	}
+	team, err := pc.TeamRepo.GetByID(teamID)
+	if err != nil || team == nil || team.ID == uuid.Nil {
+		c.String(http.StatusNotFound, "Team not found")
+		return
 	}
 
-	if defaultManager.ID == uuid.Nil {
-		// Fallback: get first available manager
-		result := pc.UserRepo.DB.Where("role_id = (SELECT id FROM roles WHERE name = 'Manager') AND is_active = true").
-			First(&defaultManager)
-		if result.Error != nil {
-			c.String(http.StatusInternalServerError, "No available manager found")
-			return
-		}
+	managerID, err := uuid.Parse(managerIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid manager ID")
+		return
+	}
+	manager, err := pc.UserRepo.FindByID(managerID.String())
+	if err != nil || manager == nil || manager.ID == uuid.Nil {
+		c.String(http.StatusNotFound, "Manager not found")
+		return
+	}
+	if !strings.EqualFold(manager.Role.Name, "Manager") {
+		c.String(http.StatusBadRequest, "Selected user must be a manager")
+		return
+	}
+
+	if err := pc.Repo.UpdateRequestStatus(id, "approved"); err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	// Create project with pending approval status
@@ -334,13 +371,13 @@ func (pc *ProjectController) ApproveRequest(c *gin.Context) {
 		ProjectRequestID: &request.ID,
 		Name:             request.Title,
 		Description:      request.Description,
-		ManagerID:        &defaultManager.ID,
-		ApproverID:       nil, // Will be assigned later
+		ManagerID:        &manager.ID,
+		ApproverID:       nil,
 		ApprovalStatus:   "pending_initial_approval",
 		Status:           "draft",
 		StartDate:        time.Now(),
 		DueDate:          request.Deadline,
-		TeamID:           assignedTeamID,
+		TeamID:           &team.ID,
 	}
 
 	if err := pc.Repo.Create(&project); err != nil {
@@ -349,20 +386,24 @@ func (pc *ProjectController) ApproveRequest(c *gin.Context) {
 	}
 	_ = pc.Repo.SyncWorkflowStatus(project.ID)
 
-	// Create initial approval record for manager
-	approval := models.Approval{
+	adminApproval := models.Approval{
 		ProjectID:  project.ID,
-		ApproverID: defaultManager.ID,
-		Stage:      "manager_assignment",
-		Status:     "approved", // Auto-approved since we assigned them
-		Comment:    "Manager assigned to project",
+		ApproverID: manager.ID,
+		Stage:      "admin_request_review",
+		Status:     "approved",
+		Comment:    "Project request approved and routed to manager workflow",
 		ApprovedAt: time.Now(),
 	}
+	_ = pc.Repo.CreateApproval(&adminApproval)
+	_ = pc.Repo.CreateApproval(&models.Approval{
+		ProjectID:  project.ID,
+		ApproverID: manager.ID,
+		Stage:      "manager_initial_review",
+		Status:     "pending",
+		Comment:    "Waiting for manager review",
+	})
 
-	_ = pc.Repo.CreateApproval(&approval)
-
-	// Redirect to project approval page instead of requests list
-	c.Redirect(http.StatusSeeOther, "/admin/projects/"+project.ID.String()+"/approval")
+	c.Redirect(http.StatusSeeOther, "/admin/projects")
 }
 
 // Reject a project request
@@ -410,12 +451,12 @@ func (pc *ProjectController) ShowApproval(c *gin.Context) {
 	approvers, _ := pc.UserRepo.GetUsersByRole("QualityAssurance")
 
 	c.HTML(http.StatusOK, "admin/projects/approval.html", utils.TemplateContext(c, gin.H{
-		"title":     "Project Approval",
-		"PageTitle": "Project Approval",
+		"title":      "Project Approval",
+		"PageTitle":  "Project Approval",
 		"ActivePage": "projects",
-		"project":   project,
-		"approvers": approvers,
-		"approvals": approvals,
+		"project":    project,
+		"approvers":  approvers,
+		"approvals":  approvals,
 	}))
 }
 

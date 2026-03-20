@@ -183,7 +183,10 @@
   const selectProject = document.getElementById('taskProjectId');
   const selectAssignee = document.getElementById('taskAssigneeId');
   const assigneeHelp = document.getElementById('taskAssigneeHelp');
-  const form = document.getElementById('taskModalForm');
+  const selectPriority = document.getElementById('taskProjectPriority');
+  const priorityHelp = document.getElementById('taskPriorityHelp');
+  const assignmentForm = document.getElementById('projectAssignmentForm');
+  const assignProjectEmployeeButton = document.getElementById('assignProjectEmployeeButton');
 
   const openModal = () => {
     modal.classList.remove('hidden');
@@ -198,8 +201,7 @@
   };
 
   const resetForm = () => {
-    if (!form) return;
-    form.reset();
+    if (assignmentForm) assignmentForm.reset();
     filterAssignees();
   };
 
@@ -220,33 +222,85 @@
   const filterAssignees = () => {
     if (!selectProject || !selectAssignee) return;
     const selectedOption = selectProject.options[selectProject.selectedIndex];
-    const memberIds = (selectedOption?.dataset.memberIds || '')
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean);
+    const projectId = selectedOption?.value || '';
+    const assignedEmployeeId = selectedOption?.dataset.assignedEmployeeId || '';
+    const projectPriority = selectedOption?.dataset.priority || 'low';
+    const hasAssignment = assignedEmployeeId.length > 0;
+    const hasProject = projectId.length > 0;
 
-    const hasFilter = memberIds.length > 0;
     Array.from(selectAssignee.options).forEach((option) => {
       if (!option.value) {
         option.hidden = false;
         option.disabled = false;
         return;
       }
-      const allowed = hasFilter && memberIds.includes(option.value);
+      const allowed = hasProject;
       option.hidden = !allowed;
       option.disabled = !allowed;
-      if (!allowed && option.selected) option.selected = false;
+      if ((!allowed || (hasAssignment && option.value !== assignedEmployeeId)) && option.selected) option.selected = false;
     });
 
+    selectAssignee.disabled = !hasProject;
+    if (hasAssignment) {
+      selectAssignee.value = assignedEmployeeId;
+    } else {
+      selectAssignee.value = '';
+    }
+
+    if (selectPriority) {
+      selectPriority.disabled = !hasProject;
+      Array.from(selectPriority.options).forEach((option) => {
+        if (!option.value) {
+          option.hidden = hasProject;
+          option.disabled = hasProject;
+        }
+      });
+      selectPriority.value = hasProject ? projectPriority : '';
+    }
+
+    if (assignmentForm) {
+      assignmentForm.action = hasProject ? `/supervisor/projects/${projectId}/assign-employee` : '';
+    }
+    if (assignProjectEmployeeButton) {
+      assignProjectEmployeeButton.disabled = !hasProject || !selectAssignee.value || !selectPriority?.value;
+      assignProjectEmployeeButton.textContent = hasAssignment ? 'Update Project Assignment' : 'Assign Project';
+    }
+
     if (assigneeHelp) {
-      assigneeHelp.textContent = hasFilter
-        ? 'Only members of the selected project team can be assigned.'
-        : 'This project has no available team members.';
+      if (!hasProject) {
+        assigneeHelp.textContent = 'Select a project to assign or review its project employee.';
+      } else if (hasAssignment) {
+        assigneeHelp.textContent = 'This project is currently assigned. You can update it here or create tasks below.';
+      } else {
+        assigneeHelp.textContent = 'Assign a project employee first before creating tasks.';
+      }
+    }
+
+    if (priorityHelp) {
+      priorityHelp.textContent = hasProject
+        ? 'Set how urgent this project should be for the assigned employee.'
+        : 'Select a project first to set its priority.';
     }
   };
 
   if (selectProject) {
     selectProject.addEventListener('change', filterAssignees);
+  }
+
+  if (selectAssignee) {
+    selectAssignee.addEventListener('change', () => {
+      if (assignProjectEmployeeButton) {
+        assignProjectEmployeeButton.disabled = !selectProject?.value || !selectAssignee.value || !selectPriority?.value;
+      }
+    });
+  }
+
+  if (selectPriority) {
+    selectPriority.addEventListener('change', () => {
+      if (assignProjectEmployeeButton) {
+        assignProjectEmployeeButton.disabled = !selectProject?.value || !selectAssignee.value || !selectPriority.value;
+      }
+    });
   }
 
   filterAssignees();
